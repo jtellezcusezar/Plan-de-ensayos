@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import datetime
 
 # ── PAGE CONFIG ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -14,34 +13,37 @@ st.set_page_config(
 MESES = {1:"Enero",2:"Febrero",3:"Marzo",4:"Abril",5:"Mayo",6:"Junio",
          7:"Julio",8:"Agosto",9:"Septiembre",10:"Octubre",11:"Noviembre",12:"Diciembre"}
 ESTADO_MAP = {"*":"Planeado", 0:"No Realizado", 0.5:"Incompleto", 1:"Completo"}
-META = 90  # % meta de cumplimiento
+META = 90
 
-# Paleta pastel elegante
 COLORS = {
     "Planeado":     "#7BA7D4",
     "Completo":     "#6BBF9E",
     "Incompleto":   "#E8C17A",
     "No Realizado": "#D98B8B",
 }
-COLORS_DARK = {
-    "Planeado":     "#4A7BA8",
-    "Completo":     "#3D8B6E",
-    "Incompleto":   "#C49A3C",
-    "No Realizado": "#B05B5B",
-}
 
-PL = dict(
-    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-    font=dict(family="Inter, sans-serif", color="#374151", size=12),
-    margin=dict(t=36, b=10, l=10, r=10),
-    hoverlabel=dict(bgcolor="#1E293B", font_color="#F1F5F9", font_size=12,
-                    bordercolor="#334155", namelength=-1),
-)
+# Base Plotly layout — sin itemgap (no existe en todas las versiones)
+def make_layout(h=300):
+    return dict(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        height=h,
+        font=dict(family="Inter, sans-serif", color="#374151", size=12),
+        margin=dict(t=40, b=10, l=10, r=10),
+        hoverlabel=dict(
+            bgcolor="#1E293B", font_color="#F1F5F9",
+            font_size=12, bordercolor="#334155",
+        ),
+        legend=dict(
+            orientation="h", yanchor="bottom", y=1.02,
+            font=dict(size=11),
+        ),
+    )
 
-# ── GLOBAL CSS ─────────────────────────────────────────────────────────────────
+# ── CSS ────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
 html,body,[class*="css"]{font-family:'Inter',sans-serif!important;}
 #MainMenu,footer{visibility:hidden;}
 .block-container{padding-top:0!important;max-width:100%!important;padding-left:2rem!important;padding-right:2rem!important;}
@@ -62,24 +64,18 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif!important;}
 .stTabs [data-baseweb="tab-panel"]{padding-top:24px;}
 .stTabs [data-baseweb="tab-highlight"]{display:none;}
 
-/* FILTER SECTION */
-.filter-section{background:#fff;border:1px solid #E5E9F0;border-radius:14px;padding:16px 20px 20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(15,23,42,.05);}
-.filter-title{font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #F3F4F6;}
+/* FILTER BAR — selectbox style */
+.filter-bar{background:#fff;border:1px solid #E5E9F0;border-radius:14px;padding:14px 20px 18px;margin-bottom:20px;box-shadow:0 1px 4px rgba(15,23,42,.05);}
+.filter-bar-title{font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #F3F4F6;}
 
-/* MULTISELECT ELEGANTE */
-div[data-testid="stMultiSelect"]>label{font-size:11px!important;font-weight:600!important;color:#6B7280!important;text-transform:uppercase!important;letter-spacing:.05em!important;margin-bottom:4px!important;}
-div[data-testid="stMultiSelect"]>div{border-radius:10px!important;border:1.5px solid #E5E9F0!important;background:#FAFBFC!important;min-height:40px!important;transition:border-color .15s!important;}
-div[data-testid="stMultiSelect"]>div:focus-within{border-color:#7BA7D4!important;background:#fff!important;box-shadow:0 0 0 3px rgba(123,167,212,.12)!important;}
-div[data-testid="stMultiSelect"] span[data-baseweb="tag"]{background:#EEF3FA!important;border-radius:6px!important;border:1px solid #C8DCF0!important;color:#4A7BA8!important;font-size:11px!important;font-weight:600!important;padding:2px 8px!important;margin:2px!important;}
-div[data-testid="stMultiSelect"] span[data-baseweb="tag"] svg{fill:#7BA7D4!important;}
-ul[data-testid="stMultiSelectDropdown"] li{font-size:12px!important;font-weight:500!important;color:#374151!important;padding:8px 12px!important;border-radius:6px!important;}
-ul[data-testid="stMultiSelectDropdown"] li:hover{background:#EEF3FA!important;}
-ul[data-testid="stMultiSelectDropdown"] li[aria-selected="true"]{background:#EEF3FA!important;color:#4A7BA8!important;font-weight:600!important;}
-div[data-testid="stMultiSelect"] input::placeholder{font-size:12px!important;color:#B0B9C6!important;font-style:italic!important;}
+/* Selectbox elegante */
+div[data-testid="stSelectbox"]>label{font-size:11px!important;font-weight:600!important;color:#6B7280!important;text-transform:uppercase!important;letter-spacing:.05em!important;margin-bottom:4px!important;}
+div[data-testid="stSelectbox"]>div>div{border-radius:10px!important;border:1.5px solid #E5E9F0!important;background:#FAFBFC!important;font-size:13px!important;color:#374151!important;transition:border-color .15s!important;}
+div[data-testid="stSelectbox"]>div>div:focus-within{border-color:#7BA7D4!important;background:#fff!important;box-shadow:0 0 0 3px rgba(123,167,212,.12)!important;}
 
-/* TEXT INPUT */
+/* Text input */
 div[data-testid="stTextInput"]>label{font-size:11px!important;font-weight:600!important;color:#6B7280!important;text-transform:uppercase!important;letter-spacing:.05em!important;}
-div[data-testid="stTextInput"]>div>input{border-radius:10px!important;border:1.5px solid #E5E9F0!important;background:#FAFBFC!important;font-size:12px!important;color:#374151!important;padding:8px 12px!important;}
+div[data-testid="stTextInput"]>div>input{border-radius:10px!important;border:1.5px solid #E5E9F0!important;background:#FAFBFC!important;font-size:13px!important;color:#374151!important;padding:8px 12px!important;}
 div[data-testid="stTextInput"]>div>input:focus{border-color:#7BA7D4!important;box-shadow:0 0 0 3px rgba(123,167,212,.12)!important;background:#fff!important;}
 
 /* KPI CARDS */
@@ -89,7 +85,8 @@ div[data-testid="stTextInput"]>div>input:focus{border-color:#7BA7D4!important;bo
 .kp-blue::before{background:#7BA7D4;} .kp-green::before{background:#6BBF9E;}
 .kp-yellow::before{background:#E8C17A;} .kp-red::before{background:#D98B8B;}
 .kp-slate::before{background:linear-gradient(90deg,#7BA7D4,#6BBF9E);}
-.kpi-icon{font-size:20px;margin-bottom:8px;} .kpi-label{font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
+.kpi-icon{font-size:20px;margin-bottom:8px;}
+.kpi-label{font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
 .kpi-value{font-size:28px;font-weight:800;line-height:1;font-family:'DM Mono',monospace;margin-bottom:4px;}
 .kpi-sub{font-size:11px;color:#9CA3AF;}
 .kp-blue .kpi-value{color:#4A7BA8;} .kp-green .kpi-value{color:#3D8B6E;}
@@ -103,7 +100,7 @@ div[data-testid="stTextInput"]>div>input:focus{border-color:#7BA7D4!important;bo
 
 /* INFO NOTE */
 .info-note{padding:9px 14px;background:#EEF3FA;border:1px solid #C8DCF0;border-radius:10px;font-size:12px;color:#4A7BA8;font-weight:500;margin-bottom:18px;}
-.ok-note{padding:9px 14px;background:#E4F4EE;border:1px solid #A8D5BF;border-radius:10px;font-size:12px;color:#3D8B6E;font-weight:500;margin-bottom:4px;}
+.ok-note{padding:9px 14px;background:#E4F4EE;border:1px solid #A8D5BF;border-radius:10px;font-size:12px;color:#3D8B6E;font-weight:500;}
 
 /* SEMÁFORO */
 .sem-grid{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;}
@@ -135,7 +132,7 @@ div[data-testid="stTextInput"]>div>input:focus{border-color:#7BA7D4!important;bo
 .bc{background:#E4F4EE;color:#3D8B6E;} .bi{background:#FBF3E0;color:#C49A3C;}
 .bn{background:#F8E8E8;color:#B05B5B;} .bp{background:#EEF3FA;color:#4A7BA8;}
 
-/* TABLES */
+/* RESULTS TABLE */
 .rt{width:100%;border-collapse:collapse;font-size:13px;}
 .rt th{background:#F8F9FB;padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #E5E9F0;white-space:nowrap;}
 .rt td{padding:10px 14px;border-bottom:1px solid #F3F4F6;color:#6B7280;}
@@ -143,14 +140,17 @@ div[data-testid="stTextInput"]>div>input:focus{border-color:#7BA7D4!important;bo
 .rt tr:last-child td{border-bottom:none;}
 .rt tr:hover td{background:#FAFBFC;}
 
-/* HM LEGEND */
+/* HEATMAP LEGEND */
 .hml{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
 .hml span{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;}
 
-/* DOWNLOAD */
-div[data-testid="stDownloadButton"] button{background:#EEF3FA!important;color:#4A7BA8!important;border:1.5px solid #C8DCF0!important;border-radius:8px!important;font-size:12px!important;font-weight:600!important;padding:6px 14px!important;font-family:'Inter',sans-serif!important;transition:all .15s!important;}
+/* DOWNLOAD BTN */
+div[data-testid="stDownloadButton"] button{background:#EEF3FA!important;color:#4A7BA8!important;border:1.5px solid #C8DCF0!important;border-radius:8px!important;font-size:12px!important;font-weight:600!important;padding:6px 14px!important;transition:all .15s!important;}
 div[data-testid="stDownloadButton"] button:hover{background:#7BA7D4!important;color:#fff!important;border-color:#7BA7D4!important;}
-::-webkit-scrollbar{width:5px;height:5px;} ::-webkit-scrollbar-track{background:transparent;} ::-webkit-scrollbar-thumb{background:#E5E9F0;border-radius:3px;}
+
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:#E5E9F0;border-radius:3px;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -168,57 +168,71 @@ def load_data():
 
 df_full = load_data()
 meses_con_datos  = sorted(df_full[df_full["EsEjecutado"]]["Mes"].unique().tolist())
-mes_label        = " – ".join([MESES[m] for m in [meses_con_datos[0], meses_con_datos[-1]]]) if len(meses_con_datos)>1 else MESES[meses_con_datos[0]]
+mes_label = " – ".join([MESES[meses_con_datos[0]], MESES[meses_con_datos[-1]]]) if len(meses_con_datos) > 1 else MESES[meses_con_datos[0]]
+
+ALL_P   = ["Todos"] + sorted(df_full["Proyecto"].unique().tolist())
+ALL_E   = ["Todas"] + sorted(df_full["ETAPA"].unique().tolist())
+ALL_M   = ["Todos"] + list(MESES.values())
+ALL_MAT = ["Todos"] + sorted(df_full["MATERIAL"].unique().tolist())
+ALL_EST = ["Todos"] + list(ESTADO_MAP.values())
 
 # ── HELPERS ────────────────────────────────────────────────────────────────────
 def kpi(icon, label, value, sub, css):
-    return f'<div class="kpi-card {css}"><div class="kpi-icon">{icon}</div><div class="kpi-label">{label}</div><div class="kpi-value">{value}</div><div class="kpi-sub">{sub}</div></div>'
+    return (f'<div class="kpi-card {css}"><div class="kpi-icon">{icon}</div>'
+            f'<div class="kpi-label">{label}</div><div class="kpi-value">{value}</div>'
+            f'<div class="kpi-sub">{sub}</div></div>')
 
 def get_kpis(df):
     ex   = df[df["EsEjecutado"]]
-    comp = int((ex["Cantidad_num"]==1).sum())
-    inc  = int((ex["Cantidad_num"]==0.5).sum())
-    no_r = int((ex["Cantidad_num"]==0).sum())
-    plan = int((df["Cantidad"]=="*").sum())
-    tot  = comp+inc+no_r
-    tasa = round(comp/tot*100,1) if tot>0 else 0.0
+    comp = int((ex["Cantidad_num"] == 1).sum())
+    inc  = int((ex["Cantidad_num"] == 0.5).sum())
+    no_r = int((ex["Cantidad_num"] == 0).sum())
+    plan = int((df["Cantidad"] == "*").sum())
+    tot  = comp + inc + no_r
+    tasa = round(comp / tot * 100, 1) if tot > 0 else 0.0
     return comp, inc, no_r, plan, tot, tasa
+
+def apply_filter(df, col, val, all_val):
+    return df if val == all_val else df[df[col] == val]
+
+def apply_mes_filter(df, val):
+    if val == "Todos":
+        return df
+    num = [k for k, v in MESES.items() if v == val]
+    return df[df["Mes"].isin(num)]
 
 def hm_cls(t):
     if t is None: return "hna"
-    if t>=90: return "h100"
-    if t>=70: return "h75"
-    if t>=50: return "h50"
-    if t>=25: return "h25"
+    if t >= 90:   return "h100"
+    if t >= 70:   return "h75"
+    if t >= 50:   return "h50"
+    if t >= 25:   return "h25"
     return "h0"
 
 def badge(estado):
-    m = {"Completo":"bc ✅","Incompleto":"bi ⚠️","No Realizado":"bn ❌","Planeado":"bp 🔵"}
-    parts = m.get(estado,"bp 🔵").split(" ")
-    return f'<span class="badge {parts[0]}">{parts[1]} {estado}</span>'
+    mapping = {"Completo": ("bc","✅"), "Incompleto": ("bi","⚠️"),
+                "No Realizado": ("bn","❌"), "Planeado": ("bp","🔵")}
+    cls, ico = mapping.get(estado, ("bp","🔵"))
+    return f'<span class="badge {cls}">{ico} {estado}</span>'
 
-def sem(name, tasa, ej, crit):
-    cls  = "sv" if tasa>=META else "sa" if tasa>=META*0.6 else "sr"
-    dot  = "#6BBF9E" if tasa>=META else "#E8C17A" if tasa>=META*0.6 else "#D98B8B"
+def sem_card(name, tasa, ej, crit):
+    cls  = "sv" if tasa >= META else "sa" if tasa >= META * 0.6 else "sr"
+    dot  = "#6BBF9E" if tasa >= META else "#E8C17A" if tasa >= META * 0.6 else "#D98B8B"
     return (f'<div class="sem-card {cls}"><div class="sem-name">'
             f'<span class="sem-dot" style="background:{dot}"></span>{name}</div>'
             f'<div class="sem-tasa">{tasa:.1f}%</div>'
             f'<div class="sem-detail">{ej} ejecutables · {crit} crítico{"s" if crit!=1 else ""}</div></div>')
 
 def bar_col(t):
-    return COLORS["Completo"] if t>=META else COLORS["Incompleto"] if t>=META*0.6 else COLORS["No Realizado"]
-
-def base_layout(fig, h=300):
-    fig.update_layout(**PL, height=h,
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, font=dict(size=11), itemgap=12))
-    return fig
+    return COLORS["Completo"] if t >= META else COLORS["Incompleto"] if t >= META * 0.6 else COLORS["No Realizado"]
 
 # ── HEADER ─────────────────────────────────────────────────────────────────────
 st.markdown(f"""
 <div class="app-header">
   <div style="display:flex;align-items:center;gap:12px;">
     <div class="logo-box">🏗️</div>
-    <div><p class="app-title">Plan de Ensayos 2026</p><p class="app-sub">Panel de Control de Calidad · Cusezar</p></div>
+    <div><p class="app-title">Plan de Ensayos 2026</p>
+         <p class="app-sub">Panel de Control de Calidad · Cusezar</p></div>
   </div>
   <div style="display:flex;align-items:center;gap:14px;">
     <span class="hdr-badge">{df_full['Proyecto'].nunique()} Proyectos · {len(df_full):,} Ensayos</span>
@@ -228,128 +242,180 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ── TABS ───────────────────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4 = st.tabs(["📊  Resumen General","🏗️  Por Proyecto y Material","📅  Línea de Tiempo y Alertas","🔍  Consulta de Ensayos"])
+tab1, tab2, tab3, tab4 = st.tabs([
+    "📊  Resumen General",
+    "🏗️  Por Proyecto y Material",
+    "📅  Línea de Tiempo y Alertas",
+    "🔍  Consulta de Ensayos",
+])
 
-ALL_P = sorted(df_full["Proyecto"].unique())
-ALL_E = sorted(df_full["ETAPA"].unique())
-ALL_M = list(MESES.values())
-ALL_MAT = sorted(df_full["MATERIAL"].unique())
-
-# ══════════ TAB 1 ══════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 1 — RESUMEN GENERAL
+# ══════════════════════════════════════════════════════════════════════════════
 with tab1:
-    st.markdown('<div class="filter-section"><div class="filter-title">⚙ Filtros</div>', unsafe_allow_html=True)
-    c1,c2,c3 = st.columns(3)
-    with c1: sp = st.multiselect("Proyectos", ALL_P, default=ALL_P, key="t1p", placeholder="Todos los proyectos")
-    with c2: se = st.multiselect("Etapa",     ALL_E, default=ALL_E, key="t1e", placeholder="Todas las etapas")
-    with c3: sm = st.multiselect("Meses",     ALL_M, default=ALL_M, key="t1m", placeholder="Todos los meses")
+
+    # Filtros con selectbox
+    st.markdown('<div class="filter-bar"><div class="filter-bar-title">⚙ Filtros</div>', unsafe_allow_html=True)
+    fc1, fc2, fc3 = st.columns(3)
+    with fc1: sel_proy  = st.selectbox("Proyecto",  ALL_P,   key="t1p")
+    with fc2: sel_etapa = st.selectbox("Etapa",     ALL_E,   key="t1e")
+    with fc3: sel_mes   = st.selectbox("Mes",       ALL_M,   key="t1m")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    sp = sp or ALL_P; se = se or ALL_E
-    sm_n = [k for k,v in MESES.items() if v in (sm or ALL_M)]
-    df1 = df_full[df_full["Proyecto"].isin(sp) & df_full["ETAPA"].isin(se) & df_full["Mes"].isin(sm_n)]
+    df1 = df_full.copy()
+    df1 = apply_filter(df1, "Proyecto", sel_proy,  "Todos")
+    df1 = apply_filter(df1, "ETAPA",    sel_etapa, "Todas")
+    df1 = apply_mes_filter(df1, sel_mes)
 
-    st.markdown(f'<div class="info-note">ℹ️ Cumplimiento calculado sobre datos ejecutados (<strong>{mes_label} 2026</strong>). Planeados (*) excluidos del cálculo. Meta: <strong>{META}%</strong></div>', unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="info-note">ℹ️ Cumplimiento calculado sobre datos ejecutados '
+        f'(<strong>{mes_label} 2026</strong>). Planeados (*) excluidos. Meta: <strong>{META}%</strong></div>',
+        unsafe_allow_html=True)
 
-    comp,inc,no_r,plan,tot,tasa = get_kpis(df1)
-    k1,k2,k3,k4,k5 = st.columns(5)
-    k1.markdown(kpi("📋","Planeados",    f"{plan:,}", "Sin ejecutar en 2026",                                       "kp-blue"),   unsafe_allow_html=True)
-    k2.markdown(kpi("✅","Completos",    f"{comp:,}", f"{comp/tot*100:.1f}% del ejecutable" if tot else "—",         "kp-green"),  unsafe_allow_html=True)
-    k3.markdown(kpi("⚠️","Incompletos",  f"{inc:,}",  f"{inc/tot*100:.1f}% del ejecutable"  if tot else "—",         "kp-yellow"), unsafe_allow_html=True)
-    k4.markdown(kpi("❌","No Realizados",f"{no_r:,}", f"{no_r/tot*100:.1f}% del ejecutable" if tot else "—",         "kp-red"),    unsafe_allow_html=True)
-    k5.markdown(kpi("📈","Tasa de Cumplimiento",f"{tasa}%", f"Meta: ≥ {META}%",                                     "kp-slate"),  unsafe_allow_html=True)
+    # KPIs
+    comp, inc, no_r, plan, tot, tasa = get_kpis(df1)
+    k1, k2, k3, k4, k5 = st.columns(5)
+    k1.markdown(kpi("📋", "Planeados",        f"{plan:,}",  "Sin ejecutar en 2026",                                      "kp-blue"),   unsafe_allow_html=True)
+    k2.markdown(kpi("✅", "Completos",        f"{comp:,}",  f"{comp/tot*100:.1f}% del ejecutable" if tot else "—",        "kp-green"),  unsafe_allow_html=True)
+    k3.markdown(kpi("⚠️", "Incompletos",      f"{inc:,}",   f"{inc/tot*100:.1f}% del ejecutable"  if tot else "—",        "kp-yellow"), unsafe_allow_html=True)
+    k4.markdown(kpi("❌", "No Realizados",    f"{no_r:,}",  f"{no_r/tot*100:.1f}% del ejecutable" if tot else "—",        "kp-red"),    unsafe_allow_html=True)
+    k5.markdown(kpi("📈", "Tasa Cumplimiento",f"{tasa}%",   f"Meta: ≥ {META}%",                                          "kp-slate"),  unsafe_allow_html=True)
 
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
-    # Donut + Barras proyecto
-    d1,d2 = st.columns([1,1.5])
+    # Donut + Avance por proyecto
+    d1, d2 = st.columns([1, 1.5])
+
     with d1:
         st.markdown('<div class="dash-card"><div class="card-title">Distribución por Estado</div><div class="card-sub">Total de registros en el plan</div>', unsafe_allow_html=True)
-        ec = df1["Estado"].value_counts().reset_index(); ec.columns=["Estado","n"]
+        ec = df1["Estado"].value_counts().reset_index()
+        ec.columns = ["Estado", "n"]
         ec["C"] = ec["Estado"].map(COLORS)
-        fig = go.Figure(go.Pie(labels=ec["Estado"],values=ec["n"],hole=0.70,marker_colors=ec["C"].tolist(),textinfo="none",
-                               hovertemplate="<b>%{label}</b><br>%{value:,} · %{percent}<extra></extra>"))
-        fig.update_layout(**PL,height=270,showlegend=True,
-            legend=dict(orientation="v",x=1.02,y=0.5,font=dict(size=12)),
-            annotations=[dict(text=f"<b>{len(df1):,}</b>",x=0.5,y=0.5,font_size=16,showarrow=False,font_color="#111827")])
-        st.plotly_chart(fig,use_container_width=True,config={"displayModeBar":False})
+        fig = go.Figure(go.Pie(
+            labels=ec["Estado"], values=ec["n"], hole=0.70,
+            marker_colors=ec["C"].tolist(), textinfo="none",
+            hovertemplate="<b>%{label}</b><br>%{value:,} · %{percent}<extra></extra>",
+        ))
+        fig.update_layout(**make_layout(270), showlegend=True,
+            legend=dict(orientation="v", x=1.02, y=0.5, font=dict(size=12)),
+            annotations=[dict(text=f"<b>{len(df1):,}</b>", x=0.5, y=0.5,
+                              font_size=16, showarrow=False, font_color="#111827")])
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
         st.markdown('</div>', unsafe_allow_html=True)
 
     with d2:
-        st.markdown('<div class="dash-card"><div class="card-title">Avance por Proyecto</div><div class="card-sub">Solo proyectos con ensayos ejecutados · ordenado por tasa de cumplimiento</div>', unsafe_allow_html=True)
-        ex1 = df1[df1["EsEjecutado"]&(df1["Estado"]!="Planeado")]
+        st.markdown('<div class="dash-card"><div class="card-title">Avance por Proyecto</div><div class="card-sub">Proyectos con ensayos ejecutados · ordenado por tasa de cumplimiento</div>', unsafe_allow_html=True)
+        ex1 = df1[df1["EsEjecutado"] & (df1["Estado"] != "Planeado")]
         if not ex1.empty:
-            orden = ex1.groupby("Proyecto").apply(lambda g:(g["Cantidad_num"]==1).sum()/len(g)*100).sort_values().index.tolist()
-            pg = ex1.groupby(["Proyecto","Estado"])["Cantidad_num"].count().reset_index(); pg.columns=["Proyecto","Estado","n"]
-            fig = px.bar(pg,x="n",y="Proyecto",color="Estado",orientation="h",barmode="stack",color_discrete_map=COLORS,
-                         category_orders={"Proyecto":orden,"Estado":["No Realizado","Incompleto","Completo"]})
-            fig.update_traces(hovertemplate="<b>%{y}</b><br>%{data.name}: %{x}<extra></extra>")
-            base_layout(fig,270)
-            fig.update_layout(xaxis=dict(title="",gridcolor="#F3F4F6"),yaxis=dict(title="",gridwidth=0))
-            st.plotly_chart(fig,use_container_width=True,config={"displayModeBar":False})
+            orden = (ex1.groupby("Proyecto")
+                       .apply(lambda g: (g["Cantidad_num"]==1).sum() / len(g) * 100)
+                       .sort_values().index.tolist())
+            pg = ex1.groupby(["Proyecto","Estado"])["Cantidad_num"].count().reset_index()
+            pg.columns = ["Proyecto","Estado","n"]
+            fig = px.bar(pg, x="n", y="Proyecto", color="Estado",
+                         orientation="h", barmode="stack",
+                         color_discrete_map=COLORS,
+                         category_orders={"Proyecto": orden,
+                                          "Estado": ["No Realizado","Incompleto","Completo"]})
+            fig.update_traces(hovertemplate="<b>%{y}</b><br>%{data.name}: %{x}<extra></extra>",
+                              marker_line_width=0)
+            fig.update_layout(**make_layout(270),
+                xaxis=dict(title="", gridcolor="#F3F4F6"),
+                yaxis=dict(title="", gridwidth=0))
+            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
         st.markdown('</div>', unsafe_allow_html=True)
 
     # Línea temporal
-    st.markdown('<div class="dash-card"><div class="card-title">Ensayos por Mes — 2026</div><div class="card-sub">Líneas sólidas = meses con datos ejecutados · Punteada = planeados · Curva suavizada (spline)</div>', unsafe_allow_html=True)
-    mp = df1[df1["Cantidad"]=="*"].groupby("Mes").size().reindex(range(1,13),fill_value=0).reset_index(); mp.columns=["Mes","n"]
+    st.markdown('<div class="dash-card"><div class="card-title">Ensayos por Mes — 2026</div><div class="card-sub">Líneas sólidas = meses con datos ejecutados · Punteada = planeados · Curva suavizada</div>', unsafe_allow_html=True)
+    mp = (df1[df1["Cantidad"] == "*"]
+            .groupby("Mes").size()
+            .reindex(range(1,13), fill_value=0)
+            .reset_index())
+    mp.columns = ["Mes","n"]
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=mp["Mes"].map(lambda m:MESES[m]),y=mp["n"],name="Planeado (*)",mode="lines+markers",
-        line=dict(color=COLORS["Planeado"],width=2,dash="dot",shape="spline",smoothing=0.8),
-        marker=dict(size=6),hovertemplate="<b>%{x}</b><br>Planeados: %{y}<extra></extra>"))
-    for est,col,fc in [("Completo",COLORS["Completo"],"rgba(107,191,158,.15)"),
-                       ("Incompleto",COLORS["Incompleto"],None),
-                       ("No Realizado",COLORS["No Realizado"],None)]:
-        sub = df1[df1["EsEjecutado"]&(df1["Estado"]==est)].groupby("Mes").size().reindex(meses_con_datos,fill_value=0).reset_index(); sub.columns=["Mes","n"]
-        fig.add_trace(go.Scatter(x=sub["Mes"].map(lambda m:MESES[m]),y=sub["n"],name=est,mode="lines+markers",
-            line=dict(color=col,width=2.5,shape="spline",smoothing=1.0),
-            marker=dict(size=8,line=dict(color="white",width=1.5)),
-            fill="tozeroy" if est=="Completo" else None,fillcolor=fc,
-            hovertemplate=f"<b>%{{x}}</b><br>{est}: %{{y}}<extra></extra>"))
-    base_layout(fig,295)
-    fig.update_layout(xaxis=dict(gridcolor="#F3F4F6"),yaxis=dict(gridcolor="#F3F4F6"))
-    st.plotly_chart(fig,use_container_width=True,config={"displayModeBar":False})
+    fig.add_trace(go.Scatter(
+        x=mp["Mes"].map(lambda m: MESES[m]), y=mp["n"],
+        name="Planeado (*)", mode="lines+markers",
+        line=dict(color=COLORS["Planeado"], width=2, dash="dot", shape="spline", smoothing=0.8),
+        marker=dict(size=6),
+        hovertemplate="<b>%{x}</b><br>Planeados: %{y}<extra></extra>",
+    ))
+    for est, fill_c in [
+        ("Completo",     "rgba(107,191,158,.15)"),
+        ("Incompleto",   None),
+        ("No Realizado", None),
+    ]:
+        sub = (df1[df1["EsEjecutado"] & (df1["Estado"] == est)]
+                 .groupby("Mes").size()
+                 .reindex(meses_con_datos, fill_value=0)
+                 .reset_index())
+        sub.columns = ["Mes","n"]
+        fig.add_trace(go.Scatter(
+            x=sub["Mes"].map(lambda m: MESES[m]), y=sub["n"],
+            name=est, mode="lines+markers",
+            line=dict(color=COLORS[est], width=2.5, shape="spline", smoothing=1.0),
+            marker=dict(size=8, line=dict(color="white", width=1.5)),
+            fill="tozeroy" if est == "Completo" else None,
+            fillcolor=fill_c,
+            hovertemplate=f"<b>%{{x}}</b><br>{est}: %{{y}}<extra></extra>",
+        ))
+    fig.update_layout(**make_layout(295),
+        xaxis=dict(gridcolor="#F3F4F6"),
+        yaxis=dict(gridcolor="#F3F4F6"))
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
     st.markdown('</div>', unsafe_allow_html=True)
 
     # Material + Etapa
-    mc1,mc2 = st.columns(2)
-    for col_w, grp_col, title, sub_t, key_suffix in [
-        (mc1,"MATERIAL","Estado por Material","Materiales con ensayos ejecutados","mat"),
-        (mc2,"ETAPA","Cumplimiento por Etapa","Estructura vs Obra Gris","eta"),
+    mc1, mc2 = st.columns(2)
+    for col_w, grp_col, lbl, sub_lbl in [
+        (mc1, "MATERIAL", "Estado por Material",     "Materiales con ensayos ejecutados"),
+        (mc2, "ETAPA",    "Cumplimiento por Etapa",  "Estructura vs Obra Gris"),
     ]:
         with col_w:
-            st.markdown(f'<div class="dash-card"><div class="card-title">{title}</div><div class="card-sub">{sub_t}</div>', unsafe_allow_html=True)
-            sub = df1[df1["EsEjecutado"]&(df1["Estado"]!="Planeado")]
+            st.markdown(f'<div class="dash-card"><div class="card-title">{lbl}</div><div class="card-sub">{sub_lbl}</div>', unsafe_allow_html=True)
+            sub = df1[df1["EsEjecutado"] & (df1["Estado"] != "Planeado")]
             if not sub.empty:
-                g = sub.groupby([grp_col,"Estado"])["Cantidad_num"].count().reset_index(); g.columns=[grp_col,"Estado","n"]
-                fig = px.bar(g,x=grp_col,y="n",color="Estado",barmode="stack",color_discrete_map=COLORS,
+                g = sub.groupby([grp_col,"Estado"])["Cantidad_num"].count().reset_index()
+                g.columns = [grp_col,"Estado","n"]
+                fig = px.bar(g, x=grp_col, y="n", color="Estado", barmode="stack",
+                             color_discrete_map=COLORS,
                              category_orders={"Estado":["No Realizado","Incompleto","Completo"]})
-                fig.update_traces(hovertemplate="<b>%{x}</b><br>%{data.name}: %{y}<extra></extra>")
-                base_layout(fig,295)
-                fig.update_layout(xaxis=dict(title="",gridcolor="#F3F4F6",tickangle=-30 if grp_col=="MATERIAL" else 0),
-                                   yaxis=dict(title="",gridcolor="#F3F4F6"))
-                st.plotly_chart(fig,use_container_width=True,config={"displayModeBar":False})
+                fig.update_traces(hovertemplate="<b>%{x}</b><br>%{data.name}: %{y}<extra></extra>",
+                                  marker_line_width=0)
+                fig.update_layout(**make_layout(295),
+                    xaxis=dict(title="", gridcolor="#F3F4F6",
+                               tickangle=-30 if grp_col == "MATERIAL" else 0),
+                    yaxis=dict(title="", gridcolor="#F3F4F6"))
+                st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
             st.markdown('</div>', unsafe_allow_html=True)
 
-# ══════════ TAB 2 ══════════════════════════════════════════════════════════════
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 2 — POR PROYECTO Y MATERIAL
+# ══════════════════════════════════════════════════════════════════════════════
 with tab2:
-    st.markdown('<div class="filter-section"><div class="filter-title">⚙ Filtros</div>', unsafe_allow_html=True)
-    f2a,f2b,f2c = st.columns(3)
-    with f2a: sp2 = st.multiselect("Proyectos", ALL_P,   default=ALL_P,   key="t2p", placeholder="Todos")
-    with f2b: se2 = st.multiselect("Etapa",     ALL_E,   default=ALL_E,   key="t2e", placeholder="Todas")
-    with f2c: sm2 = st.multiselect("Material",  ALL_MAT, default=ALL_MAT, key="t2m", placeholder="Todos")
+
+    st.markdown('<div class="filter-bar"><div class="filter-bar-title">⚙ Filtros</div>', unsafe_allow_html=True)
+    f2a, f2b, f2c = st.columns(3)
+    with f2a: sel2_proy  = st.selectbox("Proyecto",  ALL_P,   key="t2p")
+    with f2b: sel2_etapa = st.selectbox("Etapa",     ALL_E,   key="t2e")
+    with f2c: sel2_mat   = st.selectbox("Material",  ALL_MAT, key="t2m")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    sp2=sp2 or ALL_P; se2=se2 or ALL_E; sm2=sm2 or ALL_MAT
-    df2 = df_full[df_full["Proyecto"].isin(sp2)&df_full["ETAPA"].isin(se2)&df_full["MATERIAL"].isin(sm2)]
+    df2 = df_full.copy()
+    df2 = apply_filter(df2, "Proyecto",  sel2_proy,  "Todos")
+    df2 = apply_filter(df2, "ETAPA",     sel2_etapa, "Todas")
+    df2 = apply_filter(df2, "MATERIAL",  sel2_mat,   "Todos")
     ex2 = df2[df2["EsEjecutado"]].copy()
 
-    # Heatmap Proyecto x Mes
-    st.markdown('<div class="dash-card"><div class="card-title">Heatmap de Cumplimiento — Proyecto × Mes</div><div class="card-sub">Tasa = Completos ÷ ejecutados (0, 0.5, 1). Planeados (*) excluidos. "Plan." = solo registros planeados en ese mes.</div>', unsafe_allow_html=True)
+    # Heatmap Proyecto × Mes
+    st.markdown('<div class="dash-card"><div class="card-title">Heatmap de Cumplimiento — Proyecto × Mes</div><div class="card-sub">Tasa = Completos ÷ ejecutados. Planeados (*) excluidos. "Plan." = sin datos ejecutados ese mes.</div>', unsafe_allow_html=True)
     st.markdown(f"""<div class="hml">
       <span style="background:#B8E4D0;color:#2D6A4F;">≥ 90%</span>
       <span style="background:#D5EFE3;color:#3D8B6E;">70–89%</span>
       <span style="background:#FBEFD4;color:#9A6F1E;">50–69%</span>
       <span style="background:#F6D9D9;color:#9B3B3B;">25–49%</span>
-      <span style="background:#F0C8C8;color:#8B2B2B;">&lt;25%</span>
+      <span style="background:#F0C8C8;color:#8B2B2B;">&lt; 25%</span>
       <span style="background:#F8F9FB;color:#9CA3AF;">Sin datos</span>
       <span style="font-size:11px;color:#9CA3AF;margin-left:4px;">· Meta: {META}%</span>
     </div>""", unsafe_allow_html=True)
@@ -357,158 +423,257 @@ with tab2:
     rows_hm = []
     for p in sorted(df2["Proyecto"].unique()):
         r = f'<tr><td class="hmpn">{p}</td>'
-        for m in range(1,13):
-            sub_hm = ex2[(ex2["Proyecto"]==p)&(ex2["Mes"]==m)]
-            if len(sub_hm)==0:
-                has_plan = len(df2[(df2["Proyecto"]==p)&(df2["Mes"]==m)&(df2["Cantidad"]=="*")])>0
+        for m in range(1, 13):
+            sub_hm = ex2[(ex2["Proyecto"]==p) & (ex2["Mes"]==m)]
+            if len(sub_hm) == 0:
+                has_plan = len(df2[(df2["Proyecto"]==p) & (df2["Mes"]==m) & (df2["Cantidad"]=="*")]) > 0
                 r += '<td class="hna">Plan.</td>' if has_plan else '<td class="hna">—</td>'
             else:
-                cn=(sub_hm["Cantidad_num"]==1).sum(); iN=(sub_hm["Cantidad_num"]==0.5).sum(); nn=(sub_hm["Cantidad_num"]==0).sum()
-                tot_hm=len(sub_hm); t=round(cn/tot_hm*100,1) if tot_hm>0 else 0.0
-                r += f'<td class="{hm_cls(t)}" title="{cn} compl. · {iN} incompl. · {nn} no-real / {tot_hm}">{t:.0f}%</td>'
-        r += "</tr>"; rows_hm.append(r)
+                cn  = int((sub_hm["Cantidad_num"]==1).sum())
+                iN  = int((sub_hm["Cantidad_num"]==0.5).sum())
+                nn  = int((sub_hm["Cantidad_num"]==0).sum())
+                tot_hm = len(sub_hm)
+                t   = round(cn / tot_hm * 100, 1) if tot_hm > 0 else 0.0
+                tip = f"title='{cn} compl. · {iN} incompl. · {nn} no-real / {tot_hm}'"
+                r  += f'<td class="{hm_cls(t)}" {tip}>{t:.0f}%</td>'
+        r += "</tr>"
+        rows_hm.append(r)
 
-    ths = "".join(f"<th>{MESES[m][:3]}</th>" for m in range(1,13))
-    st.markdown(f'<div class="hm-wrap"><table class="hm-table"><thead><tr><th class="hmp">Proyecto</th>{ths}</tr></thead><tbody>{"".join(rows_hm)}</tbody></table></div>', unsafe_allow_html=True)
+    ths = "".join(f"<th>{MESES[m][:3]}</th>" for m in range(1, 13))
+    st.markdown(
+        f'<div class="hm-wrap"><table class="hm-table">'
+        f'<thead><tr><th class="hmp">Proyecto</th>{ths}</tr></thead>'
+        f'<tbody>{"".join(rows_hm)}</tbody></table></div>',
+        unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    t2c1,t2c2 = st.columns(2)
+    # Material + Tasa proyecto
+    t2c1, t2c2 = st.columns(2)
+
     with t2c1:
         st.markdown('<div class="dash-card"><div class="card-title">Estado por Material</div><div class="card-sub">Distribución en ensayos ejecutados</div>', unsafe_allow_html=True)
         if not ex2.empty:
-            mg2 = ex2[ex2["Estado"]!="Planeado"].groupby(["MATERIAL","Estado"])["Cantidad_num"].count().reset_index(); mg2.columns=["Material","Estado","n"]
-            fig = px.bar(mg2,x="Material",y="n",color="Estado",barmode="stack",color_discrete_map=COLORS,category_orders={"Estado":["No Realizado","Incompleto","Completo"]})
-            fig.update_traces(hovertemplate="<b>%{x}</b><br>%{data.name}: %{y}<extra></extra>")
-            base_layout(fig,340); fig.update_layout(xaxis=dict(title="",gridcolor="#F3F4F6",tickangle=-30),yaxis=dict(title="",gridcolor="#F3F4F6"))
-            st.plotly_chart(fig,use_container_width=True,config={"displayModeBar":False})
+            mg2 = (ex2[ex2["Estado"] != "Planeado"]
+                     .groupby(["MATERIAL","Estado"])["Cantidad_num"].count()
+                     .reset_index())
+            mg2.columns = ["Material","Estado","n"]
+            fig = px.bar(mg2, x="Material", y="n", color="Estado", barmode="stack",
+                         color_discrete_map=COLORS,
+                         category_orders={"Estado":["No Realizado","Incompleto","Completo"]})
+            fig.update_traces(hovertemplate="<b>%{x}</b><br>%{data.name}: %{y}<extra></extra>",
+                              marker_line_width=0)
+            fig.update_layout(**make_layout(340),
+                xaxis=dict(title="", gridcolor="#F3F4F6", tickangle=-30),
+                yaxis=dict(title="", gridcolor="#F3F4F6"))
+            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
         st.markdown('</div>', unsafe_allow_html=True)
 
     with t2c2:
         st.markdown(f'<div class="dash-card"><div class="card-title">Tasa de Cumplimiento por Proyecto</div><div class="card-sub">% sobre total ejecutable · Meta: {META}%</div>', unsafe_allow_html=True)
         if not ex2.empty:
-            t_df = ex2.groupby("Proyecto").apply(lambda g: pd.Series({
-                "tasa": round((g["Cantidad_num"]==1).sum()/len(g)*100,1) if len(g)>0 else 0.0,
-                "comp": int((g["Cantidad_num"]==1).sum()), "tot": len(g)
-            })).reset_index().sort_values("tasa",ascending=False)
-            fig = go.Figure(go.Bar(x=t_df["tasa"],y=t_df["Proyecto"],orientation="h",
-                marker_color=[bar_col(t) for t in t_df["tasa"]],marker_line_width=0,
-                text=t_df["tasa"].map(lambda t:f"{t:.1f}%"),textposition="outside",textfont=dict(size=11,color="#6B7280"),
+            t_df = (ex2.groupby("Proyecto")
+                       .apply(lambda g: pd.Series({
+                           "tasa":  round((g["Cantidad_num"]==1).sum()/len(g)*100, 1) if len(g)>0 else 0.0,
+                           "comp":  int((g["Cantidad_num"]==1).sum()),
+                           "tot":   len(g),
+                       }))
+                       .reset_index()
+                       .sort_values("tasa", ascending=False))
+            fig = go.Figure(go.Bar(
+                x=t_df["tasa"], y=t_df["Proyecto"],
+                orientation="h",
+                marker_color=[bar_col(t) for t in t_df["tasa"]],
+                marker_line_width=0,
+                text=t_df["tasa"].map(lambda t: f"{t:.1f}%"),
+                textposition="outside",
+                textfont=dict(size=11, color="#6B7280"),
                 customdata=t_df[["comp","tot"]].values,
-                hovertemplate="<b>%{y}</b><br>Cumplimiento: %{x:.1f}%<br>Completos: %{customdata[0]}/%{customdata[1]}<extra></extra>"))
-            fig.add_vline(x=META,line_dash="dot",line_color="#7BA7D4",line_width=1.5,
-                          annotation_text=f"Meta {META}%",annotation_font_color="#7BA7D4",
-                          annotation_font_size=10,annotation_position="top right")
-            base_layout(fig,340)
-            fig.update_layout(showlegend=False,xaxis=dict(range=[0,115],gridcolor="#F3F4F6",ticksuffix="%",title=""),yaxis=dict(gridwidth=0,title=""))
-            st.plotly_chart(fig,use_container_width=True,config={"displayModeBar":False})
+                hovertemplate=(
+                    "<b>%{y}</b><br>Cumplimiento: %{x:.1f}%"
+                    "<br>Completos: %{customdata[0]}/%{customdata[1]}<extra></extra>"
+                ),
+            ))
+            fig.add_vline(x=META, line_dash="dot", line_color="#7BA7D4", line_width=1.5,
+                          annotation_text=f"Meta {META}%",
+                          annotation_font_color="#7BA7D4", annotation_font_size=10,
+                          annotation_position="top right")
+            fig.update_layout(**make_layout(340), showlegend=False,
+                xaxis=dict(range=[0,115], gridcolor="#F3F4F6", ticksuffix="%", title=""),
+                yaxis=dict(gridwidth=0, title=""))
+            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
         st.markdown('</div>', unsafe_allow_html=True)
 
-# ══════════ TAB 3 ══════════════════════════════════════════════════════════════
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 3 — LÍNEA DE TIEMPO Y ALERTAS
+# ══════════════════════════════════════════════════════════════════════════════
 with tab3:
-    st.markdown('<div class="filter-section"><div class="filter-title">⚙ Filtros</div>', unsafe_allow_html=True)
-    f3a,f3b = st.columns([2,1])
-    with f3a: sp3 = st.multiselect("Proyectos",       ALL_P,                            key="t3p",placeholder="Todos")
-    with f3b: sm3 = st.multiselect("Meses con datos", [MESES[m] for m in meses_con_datos], key="t3m",placeholder="Todos",default=[MESES[m] for m in meses_con_datos])
+
+    st.markdown('<div class="filter-bar"><div class="filter-bar-title">⚙ Filtros</div>', unsafe_allow_html=True)
+    f3a, f3b = st.columns([2, 1])
+    with f3a: sel3_proy = st.selectbox("Proyecto",        ALL_P,  key="t3p")
+    with f3b: sel3_mes  = st.selectbox("Mes con datos",   ["Todos"] + [MESES[m] for m in meses_con_datos], key="t3m")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    sp3=sp3 or ALL_P
-    sm3_n=[k for k,v in MESES.items() if v in (sm3 or [MESES[m] for m in meses_con_datos])]
+    df3_base = apply_filter(df_full, "Proyecto", sel3_proy, "Todos")
+    sm3 = meses_con_datos if sel3_mes == "Todos" else [k for k,v in MESES.items() if v == sel3_mes]
 
-    tasa3 = df_full[df_full["EsEjecutado"]&df_full["Proyecto"].isin(sp3)].groupby("Proyecto").apply(
-        lambda g: pd.Series({"tasa":round((g["Cantidad_num"]==1).sum()/len(g)*100,1) if len(g)>0 else 0.0,
-                              "ej":len(g),"crit":int((g["Cantidad_num"]==0).sum())})
-    ).reset_index()
+    # Semáforo — sobre todos los datos ejecutados del proyecto
+    tasa3 = (df3_base[df3_base["EsEjecutado"]]
+               .groupby("Proyecto")
+               .apply(lambda g: pd.Series({
+                   "tasa":  round((g["Cantidad_num"]==1).sum()/len(g)*100, 1) if len(g)>0 else 0.0,
+                   "ej":    len(g),
+                   "crit":  int((g["Cantidad_num"]==0).sum()),
+               }))
+               .reset_index())
 
     st.markdown(f"### Semáforo por Proyecto")
     st.markdown(f"Cumplimiento global · 🟢 ≥{META}%  🟡 {int(META*.6)}–{META-1}%  🔴 <{int(META*.6)}%")
     st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
-    sems = '<div class="sem-grid">' + "".join(sem(r.Proyecto,r.tasa,int(r.ej),int(r.crit)) for _,r in tasa3.sort_values("tasa",ascending=False).iterrows()) + "</div>"
-    st.markdown(sems, unsafe_allow_html=True)
+    sems_html = '<div class="sem-grid">' + "".join(
+        sem_card(r.Proyecto, r.tasa, int(r.ej), int(r.crit))
+        for _, r in tasa3.sort_values("tasa", ascending=False).iterrows()
+    ) + "</div>"
+    st.markdown(sems_html, unsafe_allow_html=True)
 
     # Área acumulada
-    st.markdown('<div class="dash-card"><div class="card-title">Evolución Acumulada por Estado</div><div class="card-sub">Progresión mensual de ensayos ejecutados · curvas suavizadas (spline)</div>', unsafe_allow_html=True)
+    st.markdown('<div class="dash-card"><div class="card-title">Evolución Acumulada por Estado</div><div class="card-sub">Progresión mensual de ensayos ejecutados · curvas suavizadas</div>', unsafe_allow_html=True)
     rows_a = []
-    for m in sorted(sm3_n):
-        sub_m = df_full[df_full["EsEjecutado"]&df_full["Proyecto"].isin(sp3)&(df_full["Mes"]==m)]
-        rows_a.append({"Mes":MESES[m],"Completo":int((sub_m["Cantidad_num"]==1).sum()),
-                        "Incompleto":int((sub_m["Cantidad_num"]==0.5).sum()),"No Realizado":int((sub_m["Cantidad_num"]==0).sum())})
+    for m in sorted(sm3):
+        sub_m = df3_base[df3_base["EsEjecutado"] & (df3_base["Mes"] == m)]
+        rows_a.append({
+            "Mes":          MESES[m],
+            "Completo":     int((sub_m["Cantidad_num"]==1).sum()),
+            "Incompleto":   int((sub_m["Cantidad_num"]==0.5).sum()),
+            "No Realizado": int((sub_m["Cantidad_num"]==0).sum()),
+        })
     adf = pd.DataFrame(rows_a)
     if not adf.empty:
-        for col_ in ["Completo","Incompleto","No Realizado"]: adf[f"{col_}_ac"]=adf[col_].cumsum()
+        for c_ in ["Completo","Incompleto","No Realizado"]:
+            adf[f"{c_}_ac"] = adf[c_].cumsum()
         fig = go.Figure()
-        for est,col_,fc in [("Completo",COLORS["Completo"],"rgba(107,191,158,.15)"),
-                             ("Incompleto",COLORS["Incompleto"],"rgba(232,193,122,.12)"),
-                             ("No Realizado",COLORS["No Realizado"],"rgba(217,139,139,.10)")]:
-            fig.add_trace(go.Scatter(x=adf["Mes"],y=adf[f"{est}_ac"],name=f"{est} (acum.)",mode="lines+markers",
-                line=dict(color=col_,width=2.5,shape="spline",smoothing=1.0),
-                marker=dict(size=8,line=dict(color="white",width=1.5)),
-                fill="tozeroy",fillcolor=fc,
-                hovertemplate=f"<b>%{{x}}</b><br>{est} acum.: %{{y}}<extra></extra>"))
-        base_layout(fig,300); fig.update_layout(xaxis=dict(gridcolor="#F3F4F6"),yaxis=dict(gridcolor="#F3F4F6"))
-        st.plotly_chart(fig,use_container_width=True,config={"displayModeBar":False})
+        for est, fc in [
+            ("Completo",     "rgba(107,191,158,.15)"),
+            ("Incompleto",   "rgba(232,193,122,.12)"),
+            ("No Realizado", "rgba(217,139,139,.10)"),
+        ]:
+            fig.add_trace(go.Scatter(
+                x=adf["Mes"], y=adf[f"{est}_ac"],
+                name=f"{est} (acum.)", mode="lines+markers",
+                line=dict(color=COLORS[est], width=2.5, shape="spline", smoothing=1.0),
+                marker=dict(size=8, line=dict(color="white", width=1.5)),
+                fill="tozeroy", fillcolor=fc,
+                hovertemplate=f"<b>%{{x}}</b><br>{est} acum.: %{{y}}<extra></extra>",
+            ))
+        fig.update_layout(**make_layout(300),
+            xaxis=dict(gridcolor="#F3F4F6"),
+            yaxis=dict(gridcolor="#F3F4F6"))
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
     st.markdown('</div>', unsafe_allow_html=True)
 
     # Tabla críticos
     st.markdown('<div class="dash-card"><div class="card-title">🚨 Ensayos Críticos — No Realizados</div><div class="card-sub">Ensayos con valor = 0 en el período analizado</div>', unsafe_allow_html=True)
-    crit_df = df_full[df_full["EsEjecutado"]&(df_full["Cantidad_num"]==0)&df_full["Proyecto"].isin(sp3)&df_full["Mes"].isin(sm3_n)][["Proyecto","ETAPA","MATERIAL","ENSAYO","NTC","MesNombre","Estado"]].copy()
-    crit_df.columns=["Proyecto","Etapa","Material","Ensayo","NTC","Mes","Estado"]
+    crit_df = df3_base[
+        df3_base["EsEjecutado"] &
+        (df3_base["Cantidad_num"] == 0) &
+        df3_base["Mes"].isin(sm3)
+    ][["Proyecto","ETAPA","MATERIAL","ENSAYO","NTC","MesNombre","Estado"]].copy()
+    crit_df.columns = ["Proyecto","Etapa","Material","Ensayo","NTC","Mes","Estado"]
+
     if not crit_df.empty:
-        col_dl,_ = st.columns([1,5])
-        with col_dl: st.download_button("⬇ Exportar CSV",crit_df.to_csv(index=False).encode("utf-8"),"ensayos_criticos.csv","text/csv",key="dl3")
-        rows_t = "".join(f"<tr><td>{r.Proyecto}</td><td>{r.Etapa}</td><td>{r.Material}</td><td>{r.Ensayo}</td><td>{r.NTC}</td><td>{r.Mes}</td><td>{badge(r.Estado)}</td></tr>" for _,r in crit_df.iterrows())
-        st.markdown(f'<div style="overflow-x:auto;border-radius:10px;border:1px solid #E5E9F0;"><table class="rt"><thead><tr><th>Proyecto</th><th>Etapa</th><th>Material</th><th>Ensayo</th><th>NTC</th><th>Mes</th><th>Estado</th></tr></thead><tbody>{rows_t}</tbody></table></div>',unsafe_allow_html=True)
+        col_dl, _ = st.columns([1, 5])
+        with col_dl:
+            st.download_button("⬇ Exportar CSV",
+                               crit_df.to_csv(index=False).encode("utf-8"),
+                               "ensayos_criticos.csv", "text/csv", key="dl3")
+        rows_t = "".join(
+            f"<tr><td>{r.Proyecto}</td><td>{r.Etapa}</td><td>{r.Material}</td>"
+            f"<td>{r.Ensayo}</td><td>{r.NTC}</td><td>{r.Mes}</td>"
+            f"<td>{badge(r.Estado)}</td></tr>"
+            for _, r in crit_df.iterrows()
+        )
+        st.markdown(
+            f'<div style="overflow-x:auto;border-radius:10px;border:1px solid #E5E9F0;">'
+            f'<table class="rt"><thead><tr><th>Proyecto</th><th>Etapa</th><th>Material</th>'
+            f'<th>Ensayo</th><th>NTC</th><th>Mes</th><th>Estado</th></tr></thead>'
+            f'<tbody>{rows_t}</tbody></table></div>',
+            unsafe_allow_html=True)
     else:
-        st.markdown('<div class="ok-note">✅ No hay ensayos sin realizar en el período seleccionado.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="ok-note">✅ No hay ensayos sin realizar en el período seleccionado.</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# ══════════ TAB 4 ══════════════════════════════════════════════════════════════
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 4 — CONSULTA DE ENSAYOS
+# ══════════════════════════════════════════════════════════════════════════════
 with tab4:
     st.markdown("### 🔍 Consulta de Ensayos")
     st.markdown("Filtra y encuentra exactamente qué ensayos aplican según proyecto, mes y material.")
     st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
-    st.markdown('<div class="filter-section"><div class="filter-title">⚙ Filtros de búsqueda</div>', unsafe_allow_html=True)
-    q1,q2,q3 = st.columns(3)
+    st.markdown('<div class="filter-bar"><div class="filter-bar-title">⚙ Filtros de búsqueda</div>', unsafe_allow_html=True)
+    q1, q2, q3 = st.columns(3)
     with q1:
-        sp4  = st.multiselect("Proyecto", ALL_P,                   key="t4p",  placeholder="Todos")
-        se4  = st.multiselect("Etapa",    ALL_E,                   key="t4e",  placeholder="Todas")
+        sel4_proy  = st.selectbox("Proyecto",  ALL_P,   key="t4p")
+        sel4_etapa = st.selectbox("Etapa",     ALL_E,   key="t4e")
     with q2:
-        sm4  = st.multiselect("Mes",      ALL_M,                   key="t4m",  placeholder="Todos")
-        smat4= st.multiselect("Material", ALL_MAT,                 key="t4mat",placeholder="Todos")
+        sel4_mes   = st.selectbox("Mes",       ALL_M,   key="t4m")
+        sel4_mat   = st.selectbox("Material",  ALL_MAT, key="t4mat")
     with q3:
-        sest4= st.multiselect("Estado",   list(ESTADO_MAP.values()),key="t4est",placeholder="Todos")
-        bus  = st.text_input("🔎 Buscar por nombre de ensayo", placeholder="Ej: resistencia, fraguado...")
+        sel4_est   = st.selectbox("Estado",    ALL_EST, key="t4est")
+        buscar     = st.text_input("🔎 Buscar por nombre de ensayo",
+                                   placeholder="Ej: resistencia, fraguado, granulometría...")
     st.markdown('</div>', unsafe_allow_html=True)
 
     df4 = df_full.copy()
-    if sp4:   df4=df4[df4["Proyecto"].isin(sp4)]
-    if se4:   df4=df4[df4["ETAPA"].isin(se4)]
-    if sm4:   df4=df4[df4["Mes"].isin([k for k,v in MESES.items() if v in sm4])]
-    if smat4: df4=df4[df4["MATERIAL"].isin(smat4)]
-    if sest4: df4=df4[df4["Estado"].isin(sest4)]
-    if bus:   df4=df4[df4["ENSAYO"].str.contains(bus,case=False,na=False)]
+    df4 = apply_filter(df4, "Proyecto",  sel4_proy,  "Todos")
+    df4 = apply_filter(df4, "ETAPA",     sel4_etapa, "Todas")
+    df4 = apply_mes_filter(df4, sel4_mes)
+    df4 = apply_filter(df4, "MATERIAL",  sel4_mat,   "Todos")
+    df4 = apply_filter(df4, "Estado",    sel4_est,   "Todos")
+    if buscar:
+        df4 = df4[df4["ENSAYO"].str.contains(buscar, case=False, na=False)]
 
-    comp4,inc4,no4,plan4,tot4,tasa4 = get_kpis(df4)
-    a,b,c_,d,e = st.columns(5)
-    a.markdown(kpi("🔍","Resultados",   f"{len(df4):,}","registros","kp-slate"),  unsafe_allow_html=True)
-    b.markdown(kpi("📋","Planeados",    f"{plan4:,}",  "","kp-blue"),             unsafe_allow_html=True)
-    c_.markdown(kpi("✅","Completos",   f"{comp4:,}",  "","kp-green"),            unsafe_allow_html=True)
-    d.markdown(kpi("⚠️","Incompletos",  f"{inc4:,}",   "","kp-yellow"),           unsafe_allow_html=True)
-    e.markdown(kpi("❌","No Realizados",f"{no4:,}",    "","kp-red"),              unsafe_allow_html=True)
+    comp4, inc4, no4, plan4, tot4, tasa4 = get_kpis(df4)
+    a, b, c_, d, e = st.columns(5)
+    a.markdown(kpi("🔍","Resultados",    f"{len(df4):,}", "registros",  "kp-slate"),  unsafe_allow_html=True)
+    b.markdown(kpi("📋","Planeados",     f"{plan4:,}",   "",            "kp-blue"),   unsafe_allow_html=True)
+    c_.markdown(kpi("✅","Completos",    f"{comp4:,}",   "",            "kp-green"),  unsafe_allow_html=True)
+    d.markdown(kpi("⚠️","Incompletos",   f"{inc4:,}",    "",            "kp-yellow"), unsafe_allow_html=True)
+    e.markdown(kpi("❌","No Realizados", f"{no4:,}",     "",            "kp-red"),    unsafe_allow_html=True)
 
     st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
     st.markdown('<div class="dash-card"><div class="card-title">Resultados de la Consulta</div>', unsafe_allow_html=True)
 
     if not df4.empty:
         disp = df4[["Proyecto","ETAPA","MATERIAL","ENSAYO","NTC","FRECUENCIA","MesNombre","Estado"]].copy()
-        disp.columns=["Proyecto","Etapa","Material","Ensayo","NTC","Frecuencia","Mes","Estado"]
-        col_dl4,_ = st.columns([1,5])
-        with col_dl4: st.download_button("⬇ Descargar CSV",disp.to_csv(index=False).encode("utf-8"),"consulta_ensayos.csv","text/csv",key="dl4")
+        disp.columns = ["Proyecto","Etapa","Material","Ensayo","NTC","Frecuencia","Mes","Estado"]
+
+        col_dl4, _ = st.columns([1, 5])
+        with col_dl4:
+            st.download_button("⬇ Descargar CSV",
+                               disp.to_csv(index=False).encode("utf-8"),
+                               "consulta_ensayos.csv", "text/csv", key="dl4")
+
         prev = disp.head(50)
-        rows4 = "".join(f"<tr><td>{r.Proyecto}</td><td>{r.Etapa}</td><td>{r.Material}</td><td>{r.Ensayo}</td><td>{r.NTC}</td><td style='max-width:180px;white-space:normal;font-size:11px;color:#9CA3AF'>{r.Frecuencia}</td><td>{r.Mes}</td><td>{badge(r.Estado)}</td></tr>" for _,r in prev.iterrows())
-        st.markdown(f'<div class="card-sub">Mostrando {min(50,len(disp))} de {len(disp):,} registros.</div>',unsafe_allow_html=True)
-        st.markdown(f'<div style="overflow-x:auto;border-radius:10px;border:1px solid #E5E9F0;max-height:480px;overflow-y:auto;"><table class="rt"><thead><tr><th>Proyecto</th><th>Etapa</th><th>Material</th><th>Ensayo</th><th>NTC</th><th>Frecuencia</th><th>Mes</th><th>Estado</th></tr></thead><tbody>{rows4}</tbody></table></div>',unsafe_allow_html=True)
+        rows4 = "".join(
+            f"<tr><td>{r.Proyecto}</td><td>{r.Etapa}</td><td>{r.Material}</td>"
+            f"<td>{r.Ensayo}</td><td>{r.NTC}</td>"
+            f"<td style='max-width:180px;white-space:normal;font-size:11px;color:#9CA3AF'>{r.Frecuencia}</td>"
+            f"<td>{r.Mes}</td><td>{badge(r.Estado)}</td></tr>"
+            for _, r in prev.iterrows()
+        )
+        st.markdown(
+            f'<div class="card-sub">Mostrando {min(50,len(disp))} de {len(disp):,} registros.</div>',
+            unsafe_allow_html=True)
+        st.markdown(
+            f'<div style="overflow-x:auto;border-radius:10px;border:1px solid #E5E9F0;max-height:480px;overflow-y:auto;">'
+            f'<table class="rt"><thead><tr><th>Proyecto</th><th>Etapa</th><th>Material</th>'
+            f'<th>Ensayo</th><th>NTC</th><th>Frecuencia</th><th>Mes</th><th>Estado</th></tr></thead>'
+            f'<tbody>{rows4}</tbody></table></div>',
+            unsafe_allow_html=True)
     else:
         st.info("ℹ️ No se encontraron ensayos con los filtros aplicados.")
     st.markdown('</div>', unsafe_allow_html=True)
