@@ -18,7 +18,7 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
 html,body,[class*="css"]{font-family:'Inter',sans-serif!important;}
 #MainMenu,footer{visibility:hidden;}
-.block-container{padding-top:1rem!important;max-width:100%!important;padding-left:2rem!important;padding-right:2rem!important;}
+.block-container{padding-top:3.5rem!important;max-width:100%!important;padding-left:2rem!important;padding-right:2rem!important;}
 [data-testid="stSidebar"]{display:none;}
 
 /* HEADER */
