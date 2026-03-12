@@ -18,11 +18,11 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
 html,body,[class*="css"]{font-family:'Inter',sans-serif!important;}
 #MainMenu,footer{visibility:hidden;}
-.block-container{padding-top:0!important;max-width:100%!important;padding-left:2rem!important;padding-right:2rem!important;}
+.block-container{padding-top:1rem!important;max-width:100%!important;padding-left:2rem!important;padding-right:2rem!important;}
 [data-testid="stSidebar"]{display:none;}
 
 /* HEADER */
-.app-header{background:#fff;border-bottom:1px solid #E5E9F0;padding:14px 32px;display:flex;align-items:center;justify-content:space-between;margin:-1rem -2rem 0 -2rem;position:sticky;top:0;z-index:100;box-shadow:0 1px 6px rgba(15,23,42,.07);}
+.app-header{background:#fff;border:1px solid #E5E9F0;border-radius:14px;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;box-shadow:0 1px 6px rgba(15,23,42,.07);}
 .logo-box{width:36px;height:36px;background:linear-gradient(135deg,#7BA7D4,#4A7BA8);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;}
 .app-title{font-size:16px;font-weight:700;color:#111827;margin:0;}
 .app-sub{font-size:11px;color:#9CA3AF;font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin:0;}
@@ -130,14 +130,16 @@ def to_excel(df):
 st.markdown(f"""
 <div class="app-header">
   <div style="display:flex;align-items:center;gap:12px;">
-    <div class="logo-box">🔍</div>
-    <div><p class="app-title">Consulta de Ensayos 2026</p>
-         <p class="app-sub">Plan de Control de Calidad · Cusezar</p></div>
+    <div class="logo-box">🏗️</div>
+    <div>
+      <p class="app-title">Argus — Plan de Ensayos</p>
+      <p class="app-sub">Consulta de Ensayos 2026 · Cusezar</p>
+    </div>
   </div>
   <div style="display:flex;align-items:center;gap:14px;">
     <span class="hdr-badge">{df_full['Proyecto'].nunique()} Proyectos · {len(df_full):,} Ensayos totales</span>
   </div>
-</div><div style="height:24px"></div>
+</div>
 """, unsafe_allow_html=True)
 
 # ── FILTROS ────────────────────────────────────────────────────────────────────
