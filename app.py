@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 st.set_page_config(
     page_title="Plan de Ensayos 2026", page_icon="🏗️",
@@ -121,7 +123,7 @@ div[data-testid="stDownloadButton"] button:hover{background:#7BA7D4!important;co
 """, unsafe_allow_html=True)
 
 # ── DATA ───────────────────────────────────────────────────────────────────────
-@st.cache_data
+@st.cache_data(ttl=0)
 def load_data():
     df = pd.read_excel("Plan_de_ensayos_2026.xlsx", sheet_name="Ensayos", header=0)
     for c in ["Proyecto","MATERIAL","ETAPA","ENSAYO","NTC","FRECUENCIA"]:
@@ -133,13 +135,19 @@ def load_data():
     return df
 
 df_full = load_data()
-meses_con_datos = sorted(df_full[df_full["EsEjecutado"]]["Mes"].unique().tolist())
-mes_label = " – ".join([MESES[meses_con_datos[0]], MESES[meses_con_datos[-1]]]) if len(meses_con_datos) > 1 else MESES[meses_con_datos[0]]
+MES_ACTUAL = datetime.now(ZoneInfo("America/Bogota")).month
+MESES_VENCIDOS = list(range(1, MES_ACTUAL))
+meses_vencidos_label = "Sin meses vencidos" if not MESES_VENCIDOS else (
+    MESES[MESES_VENCIDOS[0]] if len(MESES_VENCIDOS) == 1
+    else f"{MESES[MESES_VENCIDOS[0]]} – {MESES[MESES_VENCIDOS[-1]]}"
+)
+df_base = df_full[df_full["Mes"].isin(MESES_VENCIDOS)].copy() if MESES_VENCIDOS else df_full.iloc[0:0].copy()
+mes_label = meses_vencidos_label
 
-ALL_P   = ["Todos"] + sorted(df_full["Proyecto"].unique().tolist())
-ALL_E   = ["Todas"] + sorted(df_full["ETAPA"].unique().tolist())
-ALL_M   = ["Todos"] + list(MESES.values())
-ALL_MAT = ["Todos"] + sorted(df_full["MATERIAL"].unique().tolist())
+ALL_P   = ["Todos"] + sorted(df_base["Proyecto"].unique().tolist())
+ALL_E   = ["Todas"] + sorted(df_base["ETAPA"].unique().tolist())
+ALL_M   = ["Todos"] + [MESES[m] for m in MESES_VENCIDOS]
+ALL_MAT = ["Todos"] + sorted(df_base["MATERIAL"].unique().tolist())
 ALL_EST = ["Todos"] + list(ESTADO_MAP.values())
 
 # ── HELPERS ────────────────────────────────────────────────────────────────────
@@ -199,7 +207,7 @@ st.markdown(f"""
          <p class="app-sub">Panel de Control de Calidad · Cusezar</p></div>
   </div>
   <div style="display:flex;align-items:center;gap:14px;">
-    <span class="hdr-badge">{df_full['Proyecto'].nunique()} Proyectos · {len(df_full):,} Ensayos</span>
+    <span class="hdr-badge">{df_base['Proyecto'].nunique()} Proyectos · {len(df_base):,} Ensayos</span>
     <span class="hdr-date">Datos hasta: {mes_label}</span>
   </div>
 </div><div style="height:8px"></div>
@@ -218,15 +226,16 @@ tab1, tab2, tab3, tab4 = st.tabs([
 with tab1:
     st.markdown('<div class="filter-bar"><div class="filter-bar-title">⚙ Filtros</div>', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
-    sel_proy  = c1.selectbox("Proyecto", ALL_P,  key="t1p")
-    sel_etapa = c2.selectbox("Etapa",    ALL_E,  key="t1e")
-    sel_mes   = c3.selectbox("Mes",      ALL_M,  key="t1m")
+    sel_proy  = c1.selectbox("Proyecto", ["Todos"] + sorted(df_full["Proyecto"].unique().tolist()),  key="t1p")
+    sel_etapa = c2.selectbox("Etapa",    ["Todas"] + sorted(df_full["ETAPA"].unique().tolist()),  key="t1e")
+    sel_mes   = c3.selectbox("Mes",      ["Todos"] + [MESES[m] for m in range(1,13)],  key="t1m")
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # Pestaña 1 trabaja sobre df_full (todo el año) para KPIs y visualizaciones generales
     df1 = filt(filt(filt_mes(df_full, sel_mes), "ETAPA", sel_etapa, "Todas"), "Proyecto", sel_proy, "Todos")
 
     st.markdown(
-        f'<div class="info-note">ℹ️ Cumplimiento calculado sobre datos ejecutados '
+        f'<div class="info-note">ℹ️ Cumplimiento calculado sobre meses vencidos '
         f'(<strong>{mes_label} 2026</strong>). Planeados (*) excluidos. Meta: <strong>{META}%</strong></div>',
         unsafe_allow_html=True)
 
@@ -290,8 +299,9 @@ with tab1:
 
     # ── Línea temporal ──
     st.markdown('<div class="dash-card"><div class="card-title">Ensayos por Mes — 2026</div><div class="card-sub">Líneas sólidas = ejecutados por estado · Punteada = total planeado del mes · Curva suavizada</div>', unsafe_allow_html=True)
+    TODOS_MESES = list(range(1, 13))
     mp = (df1.groupby("Mes").size()
-            .reindex(range(1,13), fill_value=0).reset_index())
+            .reindex(TODOS_MESES, fill_value=0).reset_index())
     mp.columns = ["Mes","n"]
     fig_line = go.Figure()
     fig_line.add_trace(go.Scatter(
@@ -304,7 +314,7 @@ with tab1:
     for est, fc in [("Completo","rgba(107,191,158,.15)"), ("Incompleto",None), ("No Realizado",None)]:
         sub = (df1[df1["EsEjecutado"] & (df1["Estado"]==est)]
                  .groupby("Mes").size()
-                 .reindex(meses_con_datos, fill_value=0).reset_index())
+                 .reindex(TODOS_MESES, fill_value=0).reset_index())
         sub.columns = ["Mes","n"]
         fig_line.add_trace(go.Scatter(
             x=sub["Mes"].map(lambda m: MESES[m]), y=sub["n"],
@@ -330,7 +340,7 @@ with tab2:
     sel2_mat   = f2c.selectbox("Material", ALL_MAT, key="t2m")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    df2 = filt(filt(filt(df_full, "Proyecto", sel2_proy, "Todos"), "ETAPA", sel2_etapa, "Todas"), "MATERIAL", sel2_mat, "Todos")
+    df2 = filt(filt(filt(df_base, "Proyecto", sel2_proy, "Todos"), "ETAPA", sel2_etapa, "Todas"), "MATERIAL", sel2_mat, "Todos")
     ex2 = df2[df2["EsEjecutado"]].copy()
 
     # ── Heatmap ──
@@ -348,7 +358,7 @@ with tab2:
     rows_hm = []
     for p in sorted(df2["Proyecto"].unique()):
         r = f'<tr><td class="hmpn">{p}</td>'
-        for m in range(1, 13):
+        for m in MESES_VENCIDOS:
             sub_hm = ex2[(ex2["Proyecto"]==p) & (ex2["Mes"]==m)]
             if len(sub_hm) == 0:
                 has_plan = len(df2[(df2["Proyecto"]==p) & (df2["Mes"]==m) & (df2["Cantidad"]=="*")]) > 0
@@ -363,7 +373,7 @@ with tab2:
         r += "</tr>"
         rows_hm.append(r)
 
-    ths = "".join(f"<th>{MESES[m][:3]}</th>" for m in range(1, 13))
+    ths = "".join(f"<th>{MESES[m][:3]}</th>" for m in MESES_VENCIDOS)
     st.markdown(
         f'<div class="hm-wrap"><table class="hm-table"><thead><tr><th class="hmp">Proyecto</th>{ths}</tr></thead>'
         f'<tbody>{"".join(rows_hm)}</tbody></table></div>',
@@ -371,14 +381,19 @@ with tab2:
     st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Tasa por proyecto ──
-    st.markdown(f'<div class="dash-card"><div class="card-title">Tasa de Cumplimiento por Proyecto</div><div class="card-sub">% de completos sobre el total del plan hasta el último mes con datos, incluidos planeados · Meta: {META}%</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="dash-card"><div class="card-title">Tasa de Cumplimiento por Proyecto</div><div class="card-sub">% de completos + incompletos sobre el acumulado del plan en meses vencidos ({meses_vencidos_label}) · Meta: {META}%</div>', unsafe_allow_html=True)
     if not df2.empty:
         t_df = (df2.groupby("Proyecto")
                    .apply(lambda g: pd.Series({
-                       "tasa": round((g[g["Mes"].isin(meses_con_datos)]["Cantidad_num"] == 1).sum() / len(g[g["Mes"].isin(meses_con_datos)]) * 100, 1) if len(g[g["Mes"].isin(meses_con_datos)]) > 0 else 0.0,
-                       "comp": int((g[g["Mes"].isin(meses_con_datos)]["Cantidad_num"] == 1).sum()),
-                       "plan": int((g[g["Mes"].isin(meses_con_datos)]["Cantidad"] == "*").sum()),
-                       "tot": len(g[g["Mes"].isin(meses_con_datos)]),
+                       "tasa": round(
+                           g["Cantidad_num"].isin([1, 0.5]).sum()
+                           / len(g) * 100,
+                           1
+                       ) if len(g) > 0 else 0.0,
+                       "comp": int((g["Cantidad_num"] == 1).sum()),
+                       "inc": int((g["Cantidad_num"] == 0.5).sum()),
+                       "plan": int((g["Cantidad"] == "*").sum()),
+                       "tot": len(g),
                    }))
                    .reset_index()
                    .sort_values("tasa", ascending=False))
@@ -390,8 +405,8 @@ with tab2:
             text=t_df["tasa"].map(lambda t: f"{t:.1f}%"),
             textposition="outside",
             textfont=dict(size=11, color="#6B7280"),
-            customdata=t_df[["comp", "plan", "tot"]].values,
-            hovertemplate="<b>%{y}</b><br>Cumplimiento: %{x:.1f}%<br>Completos: %{customdata[0]}<br>Planeados: %{customdata[1]}<br>Total plan hasta mes con datos: %{customdata[2]}<extra></extra>",
+            customdata=t_df[["comp", "inc", "plan", "tot"]].values,
+            hovertemplate="<b>%{y}</b><br>Cumplimiento: %{x:.1f}%<br>Completos: %{customdata[0]}<br>Incompletos: %{customdata[1]}<br>Planeados: %{customdata[2]}<br>Total acumulado meses vencidos: %{customdata[3]}<extra></extra>",
         ))
         fig_tasa.add_vline(x=META, line_dash="dot", line_color="#7BA7D4", line_width=1.5,
                            annotation_text=f"Meta {META}%",
@@ -413,11 +428,11 @@ with tab3:
     st.markdown('<div class="filter-bar"><div class="filter-bar-title">⚙ Filtros</div>', unsafe_allow_html=True)
     f3a, f3b = st.columns([2, 1])
     sel3_proy = f3a.selectbox("Proyecto",      ALL_P,  key="t3p")
-    sel3_mes  = f3b.selectbox("Mes con datos", ["Todos"] + [MESES[m] for m in meses_con_datos], key="t3m")
+    sel3_mes  = f3b.selectbox("Mes vencido", ["Todos"] + [MESES[m] for m in MESES_VENCIDOS], key="t3m")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    df3 = filt(df_full, "Proyecto", sel3_proy, "Todos")
-    sm3 = meses_con_datos if sel3_mes == "Todos" else [k for k, v in MESES.items() if v == sel3_mes]
+    df3 = filt(df_base, "Proyecto", sel3_proy, "Todos")
+    sm3 = MESES_VENCIDOS if sel3_mes == "Todos" else [k for k, v in MESES.items() if v == sel3_mes]
 
     # Semáforo
     tasa3 = (df3[df3["EsEjecutado"]]
@@ -505,10 +520,10 @@ with tab4:
 
     st.markdown('<div class="filter-bar"><div class="filter-bar-title">⚙ Filtros de búsqueda</div>', unsafe_allow_html=True)
     q1, q2, q3 = st.columns(3)
-    sel4_proy  = q1.selectbox("Proyecto",  ALL_P,   key="t4p")
-    sel4_etapa = q1.selectbox("Etapa",     ALL_E,   key="t4e")
-    sel4_mes   = q2.selectbox("Mes",       ALL_M,   key="t4m")
-    sel4_mat   = q2.selectbox("Material",  ALL_MAT, key="t4mat")
+    sel4_proy  = q1.selectbox("Proyecto",  ["Todos"] + sorted(df_full["Proyecto"].unique().tolist()),   key="t4p")
+    sel4_etapa = q1.selectbox("Etapa",     ["Todas"] + sorted(df_full["ETAPA"].unique().tolist()),   key="t4e")
+    sel4_mes   = q2.selectbox("Mes",       ["Todos"] + [MESES[m] for m in range(1,13)],   key="t4m")
+    sel4_mat   = q2.selectbox("Material",  ["Todos"] + sorted(df_full["MATERIAL"].unique().tolist()),   key="t4mat")
     sel4_est   = q3.selectbox("Estado",    ALL_EST, key="t4est")
     buscar     = q3.text_input("🔎 Buscar por nombre de ensayo",
                                placeholder="Ej: resistencia, fraguado, granulometría...")
