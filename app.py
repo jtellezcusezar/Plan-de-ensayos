@@ -250,7 +250,7 @@ with tab1:
             labels=ec["Estado"], values=ec["n"], hole=0.70,
             marker_colors=ec["C"].tolist(),
             textinfo="percent",
-            textposition="inside",
+            textposition="outside",
             insidetextorientation="horizontal",
             hovertemplate="<b>%{label}</b><br>%{value:,} · %{percent}<extra></extra>",
         ))
@@ -371,14 +371,14 @@ with tab2:
     st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Tasa por proyecto ──
-    st.markdown(f'<div class="dash-card"><div class="card-title">Tasa de Cumplimiento por Proyecto</div><div class="card-sub">% de completos sobre el total del plan, incluidos planeados · Meta: {META}%</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="dash-card"><div class="card-title">Tasa de Cumplimiento por Proyecto</div><div class="card-sub">% de completos sobre el total del plan hasta el último mes con datos, incluidos planeados · Meta: {META}%</div>', unsafe_allow_html=True)
     if not df2.empty:
         t_df = (df2.groupby("Proyecto")
                    .apply(lambda g: pd.Series({
-                       "tasa": round((g["Cantidad_num"] == 1).sum() / len(g) * 100, 1) if len(g) > 0 else 0.0,
-                       "comp": int((g["Cantidad_num"] == 1).sum()),
-                       "plan": int((g["Cantidad"] == "*").sum()),
-                       "tot": len(g),
+                       "tasa": round((g[g["Mes"].isin(meses_con_datos)]["Cantidad_num"] == 1).sum() / len(g[g["Mes"].isin(meses_con_datos)]) * 100, 1) if len(g[g["Mes"].isin(meses_con_datos)]) > 0 else 0.0,
+                       "comp": int((g[g["Mes"].isin(meses_con_datos)]["Cantidad_num"] == 1).sum()),
+                       "plan": int((g[g["Mes"].isin(meses_con_datos)]["Cantidad"] == "*").sum()),
+                       "tot": len(g[g["Mes"].isin(meses_con_datos)]),
                    }))
                    .reset_index()
                    .sort_values("tasa", ascending=False))
@@ -391,7 +391,7 @@ with tab2:
             textposition="outside",
             textfont=dict(size=11, color="#6B7280"),
             customdata=t_df[["comp", "plan", "tot"]].values,
-            hovertemplate="<b>%{y}</b><br>Cumplimiento: %{x:.1f}%<br>Completos: %{customdata[0]}<br>Planeados: %{customdata[1]}<br>Total plan: %{customdata[2]}<extra></extra>",
+            hovertemplate="<b>%{y}</b><br>Cumplimiento: %{x:.1f}%<br>Completos: %{customdata[0]}<br>Planeados: %{customdata[1]}<br>Total plan hasta mes con datos: %{customdata[2]}<extra></extra>",
         ))
         fig_tasa.add_vline(x=META, line_dash="dot", line_color="#7BA7D4", line_width=1.5,
                            annotation_text=f"Meta {META}%",
