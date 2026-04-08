@@ -153,10 +153,11 @@ def get_kpis(df):
     comp = int((ex["Cantidad_num"] == 1).sum())
     inc  = int((ex["Cantidad_num"] == 0.5).sum())
     no_r = int((ex["Cantidad_num"] == 0).sum())
-    plan = int((df["Cantidad"] == "*").sum())
+    plan = int(len(df))
+    pend = int((df["Cantidad"] == "*").sum())
     tot  = comp + inc + no_r
     tasa = round(comp / tot * 100, 1) if tot > 0 else 0.0
-    return comp, inc, no_r, plan, tot, tasa
+    return comp, inc, no_r, plan, pend, tot, tasa
 
 def filt(df, col, val, empty_val):
     return df if val == empty_val else df[df[col] == val]
@@ -229,9 +230,9 @@ with tab1:
         f'(<strong>{mes_label} 2026</strong>). Planeados (*) excluidos. Meta: <strong>{META}%</strong></div>',
         unsafe_allow_html=True)
 
-    comp, inc, no_r, plan, tot, tasa = get_kpis(df1)
+    comp, inc, no_r, plan, pend, tot, tasa = get_kpis(df1)
     k1, k2, k3, k4, k5 = st.columns(5)
-    k1.markdown(kpi("📋","Planeados",         f"{plan:,}", "Sin ejecutar en 2026",                               "kp-blue"),   unsafe_allow_html=True)
+    k1.markdown(kpi("📋","Planeados",         f"{plan:,}", f"Pendientes: {pend:,}",                              "kp-blue"),   unsafe_allow_html=True)
     k2.markdown(kpi("✅","Completos",         f"{comp:,}", f"{comp/tot*100:.1f}% del ejecutable" if tot else "—","kp-green"),  unsafe_allow_html=True)
     k3.markdown(kpi("⚠️","Incompletos",       f"{inc:,}",  f"{inc/tot*100:.1f}% del ejecutable"  if tot else "—","kp-yellow"), unsafe_allow_html=True)
     k4.markdown(kpi("❌","No Realizados",     f"{no_r:,}", f"{no_r/tot*100:.1f}% del ejecutable" if tot else "—","kp-red"),    unsafe_allow_html=True)
@@ -247,7 +248,10 @@ with tab1:
         ec["C"] = ec["Estado"].map(COLORS)
         fig_donut = go.Figure(go.Pie(
             labels=ec["Estado"], values=ec["n"], hole=0.70,
-            marker_colors=ec["C"].tolist(), textinfo="none",
+            marker_colors=ec["C"].tolist(),
+            textinfo="percent",
+            textposition="inside",
+            insidetextorientation="horizontal",
             hovertemplate="<b>%{label}</b><br>%{value:,} · %{percent}<extra></extra>",
         ))
         # Aplicar layout sin legend primero, luego agregar legend vertical y annotations
@@ -285,17 +289,17 @@ with tab1:
         st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Línea temporal ──
-    st.markdown('<div class="dash-card"><div class="card-title">Ensayos por Mes — 2026</div><div class="card-sub">Líneas sólidas = meses con datos · Punteada = planeados · Curva suavizada</div>', unsafe_allow_html=True)
-    mp = (df1[df1["Cantidad"]=="*"].groupby("Mes").size()
+    st.markdown('<div class="dash-card"><div class="card-title">Ensayos por Mes — 2026</div><div class="card-sub">Líneas sólidas = ejecutados por estado · Punteada = total planeado del mes · Curva suavizada</div>', unsafe_allow_html=True)
+    mp = (df1.groupby("Mes").size()
             .reindex(range(1,13), fill_value=0).reset_index())
     mp.columns = ["Mes","n"]
     fig_line = go.Figure()
     fig_line.add_trace(go.Scatter(
         x=mp["Mes"].map(lambda m: MESES[m]), y=mp["n"],
-        name="Planeado (*)", mode="lines+markers",
+        name="Plan del mes", mode="lines+markers",
         line=dict(color=COLORS["Planeado"], width=2, dash="dot", shape="spline", smoothing=0.8),
         marker=dict(size=6),
-        hovertemplate="<b>%{x}</b><br>Planeados: %{y}<extra></extra>",
+        hovertemplate="<b>%{x}</b><br>Plan del mes: %{y}<extra></extra>",
     ))
     for est, fc in [("Completo","rgba(107,191,158,.15)"), ("Incompleto",None), ("No Realizado",None)]:
         sub = (df1[df1["EsEjecutado"] & (df1["Estado"]==est)]
@@ -315,30 +319,6 @@ with tab1:
     st.plotly_chart(fig_line, use_container_width=True, config={"displayModeBar": False})
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # ── Material + Etapa ──
-    mc1, mc2 = st.columns(2)
-    for col_w, grp, title, sub_t in [
-        (mc1, "MATERIAL", "Estado por Material",    "Materiales con ensayos ejecutados"),
-        (mc2, "ETAPA",    "Cumplimiento por Etapa", "Estructura vs Obra Gris"),
-    ]:
-        with col_w:
-            st.markdown(f'<div class="dash-card"><div class="card-title">{title}</div><div class="card-sub">{sub_t}</div>', unsafe_allow_html=True)
-            sub = df1[df1["EsEjecutado"] & (df1["Estado"] != "Planeado")]
-            if not sub.empty:
-                g = sub.groupby([grp,"Estado"])["Cantidad_num"].count().reset_index()
-                g.columns = [grp,"Estado","n"]
-                fig_m = px.bar(g, x=grp, y="n", color="Estado", barmode="stack",
-                               color_discrete_map=COLORS,
-                               category_orders={"Estado":["No Realizado","Incompleto","Completo"]})
-                fig_m.update_traces(hovertemplate="<b>%{x}</b><br>%{data.name}: %{y}<extra></extra>",
-                                    marker_line_width=0)
-                apply_base(fig_m, h=295)
-                fig_m.update_layout(xaxis=dict(title="", gridcolor="#F3F4F6",
-                                               tickangle=-30 if grp == "MATERIAL" else 0),
-                                    yaxis=dict(title="", gridcolor="#F3F4F6"))
-                st.plotly_chart(fig_m, use_container_width=True, config={"displayModeBar": False})
-            st.markdown('</div>', unsafe_allow_html=True)
-
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 2
 # ══════════════════════════════════════════════════════════════════════════════
@@ -354,7 +334,7 @@ with tab2:
     ex2 = df2[df2["EsEjecutado"]].copy()
 
     # ── Heatmap ──
-    st.markdown('<div class="dash-card"><div class="card-title">Heatmap de Cumplimiento — Proyecto × Mes</div><div class="card-sub">Tasa = Completos ÷ ejecutados. "Plan." = sin datos ejecutados ese mes.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="dash-card"><div class="card-title">Heatmap de Cumplimiento — Proyecto × Mes</div><div class="card-sub">Tasa = promedio de valores ejecutados (0, 0.5, 1). "Plan." = sin datos ejecutados ese mes.</div>', unsafe_allow_html=True)
     st.markdown(f"""<div class="hml">
       <span style="background:#B8E4D0;color:#2D6A4F;">≥ 90%</span>
       <span style="background:#D5EFE3;color:#3D8B6E;">70–89%</span>
@@ -377,9 +357,9 @@ with tab2:
                 cn = int((sub_hm["Cantidad_num"]==1).sum())
                 iN = int((sub_hm["Cantidad_num"]==0.5).sum())
                 nn = int((sub_hm["Cantidad_num"]==0).sum())
-                tot_hm = len(sub_hm)
-                t = round(cn / tot_hm * 100, 1) if tot_hm > 0 else 0.0
-                r += f'<td class="{hm_cls(t)}" title="{cn} compl. · {iN} incompl. · {nn} no-real / {tot_hm}">{t:.0f}%</td>'
+                prom = sub_hm["Cantidad_num"].mean()
+                t = round(prom * 100, 1) if pd.notna(prom) else 0.0
+                r += f'<td class="{hm_cls(t)}" title="{cn} compl. · {iN} incompl. · {nn} no-real · Promedio: {prom:.2f}">{t:.0f}%</td>'
         r += "</tr>"
         rows_hm.append(r)
 
@@ -390,59 +370,22 @@ with tab2:
         unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # ── Material + Tasa por proyecto ──
-    t2c1, t2c2 = st.columns(2)
-    with t2c1:
-        st.markdown('<div class="dash-card"><div class="card-title">Estado por Material</div><div class="card-sub">Distribución en ensayos ejecutados</div>', unsafe_allow_html=True)
-        if not ex2.empty:
-            mg = (ex2[ex2["Estado"] != "Planeado"]
-                    .groupby(["MATERIAL","Estado"])["Cantidad_num"].count().reset_index())
-            mg.columns = ["Material","Estado","n"]
-            fig_mg = px.bar(mg, x="Material", y="n", color="Estado", barmode="stack",
-                            color_discrete_map=COLORS,
-                            category_orders={"Estado":["No Realizado","Incompleto","Completo"]})
-            fig_mg.update_traces(hovertemplate="<b>%{x}</b><br>%{data.name}: %{y}<extra></extra>",
-                                 marker_line_width=0)
-            apply_base(fig_mg, h=340)
-            fig_mg.update_layout(xaxis=dict(title="", gridcolor="#F3F4F6", tickangle=-30),
-                                  yaxis=dict(title="", gridcolor="#F3F4F6"))
-            st.plotly_chart(fig_mg, use_container_width=True, config={"displayModeBar": False})
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with t2c2:
-        st.markdown(f'<div class="dash-card"><div class="card-title">Tasa de Cumplimiento por Proyecto</div><div class="card-sub">% sobre total ejecutable · Meta: {META}%</div>', unsafe_allow_html=True)
-        if not ex2.empty:
-            t_df = (ex2.groupby("Proyecto")
-                       .apply(lambda g: pd.Series({
-                           "tasa": round((g["Cantidad_num"]==1).sum()/len(g)*100, 1) if len(g) > 0 else 0.0,
-                           "comp": int((g["Cantidad_num"]==1).sum()),
-                           "tot":  len(g),
-                       }))
-                       .reset_index()
-                       .sort_values("tasa", ascending=False))
-            fig_tasa = go.Figure(go.Bar(
-                x=t_df["tasa"], y=t_df["Proyecto"],
-                orientation="h",
-                marker_color=[bar_col(t) for t in t_df["tasa"]],
-                marker_line_width=0,
-                text=t_df["tasa"].map(lambda t: f"{t:.1f}%"),
-                textposition="outside",
-                textfont=dict(size=11, color="#6B7280"),
-                customdata=t_df[["comp","tot"]].values,
-                hovertemplate="<b>%{y}</b><br>Cumplimiento: %{x:.1f}%<br>Completos: %{customdata[0]}/%{customdata[1]}<extra></extra>",
-            ))
-            fig_tasa.add_vline(x=META, line_dash="dot", line_color="#7BA7D4", line_width=1.5,
-                               annotation_text=f"Meta {META}%",
-                               annotation_font_color="#7BA7D4", annotation_font_size=10,
-                               annotation_position="top right")
-            apply_base(fig_tasa, h=340, legend_h=False)
-            fig_tasa.update_layout(
-                showlegend=False,
-                xaxis=dict(range=[0,115], gridcolor="#F3F4F6", ticksuffix="%", title=""),
-                yaxis=dict(gridwidth=0, title=""),
-            )
-            st.plotly_chart(fig_tasa, use_container_width=True, config={"displayModeBar": False})
-        st.markdown('</div>', unsafe_allow_html=True)
+    # ── Estado por material ──
+    st.markdown('<div class="dash-card"><div class="card-title">Estado por Material</div><div class="card-sub">Distribución en ensayos ejecutados</div>', unsafe_allow_html=True)
+    if not ex2.empty:
+        mg = (ex2[ex2["Estado"] != "Planeado"]
+                .groupby(["MATERIAL","Estado"])["Cantidad_num"].count().reset_index())
+        mg.columns = ["Material","Estado","n"]
+        fig_mg = px.bar(mg, x="Material", y="n", color="Estado", barmode="stack",
+                        color_discrete_map=COLORS,
+                        category_orders={"Estado":["No Realizado","Incompleto","Completo"]})
+        fig_mg.update_traces(hovertemplate="<b>%{x}</b><br>%{data.name}: %{y}<extra></extra>",
+                             marker_line_width=0)
+        apply_base(fig_mg, h=340)
+        fig_mg.update_layout(xaxis=dict(title="", gridcolor="#F3F4F6", tickangle=-30),
+                              yaxis=dict(title="", gridcolor="#F3F4F6"))
+        st.plotly_chart(fig_mg, use_container_width=True, config={"displayModeBar": False})
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 3
@@ -568,10 +511,10 @@ with tab4:
     if sel4_est   != "Todos": df4 = df4[df4["Estado"]   == sel4_est]
     if buscar:                df4 = df4[df4["ENSAYO"].str.contains(buscar, case=False, na=False)]
 
-    comp4, inc4, no4, plan4, tot4, tasa4 = get_kpis(df4)
+    comp4, inc4, no4, plan4, pend4, tot4, tasa4 = get_kpis(df4)
     a, b, c_, d, e = st.columns(5)
     a.markdown(kpi("🔍","Resultados",    f"{len(df4):,}", "registros","kp-slate"),  unsafe_allow_html=True)
-    b.markdown(kpi("📋","Planeados",     f"{plan4:,}",    "",          "kp-blue"),   unsafe_allow_html=True)
+    b.markdown(kpi("📋","Planeados",     f"{plan4:,}",    f"Pendientes: {pend4:,}", "kp-blue"),   unsafe_allow_html=True)
     c_.markdown(kpi("✅","Completos",    f"{comp4:,}",    "",          "kp-green"),  unsafe_allow_html=True)
     d.markdown(kpi("⚠️","Incompletos",   f"{inc4:,}",     "",          "kp-yellow"), unsafe_allow_html=True)
     e.markdown(kpi("❌","No Realizados", f"{no4:,}",      "",          "kp-red"),    unsafe_allow_html=True)
