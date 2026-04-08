@@ -370,21 +370,40 @@ with tab2:
         unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # ── Estado por material ──
-    st.markdown('<div class="dash-card"><div class="card-title">Estado por Material</div><div class="card-sub">Distribución en ensayos ejecutados</div>', unsafe_allow_html=True)
-    if not ex2.empty:
-        mg = (ex2[ex2["Estado"] != "Planeado"]
-                .groupby(["MATERIAL","Estado"])["Cantidad_num"].count().reset_index())
-        mg.columns = ["Material","Estado","n"]
-        fig_mg = px.bar(mg, x="Material", y="n", color="Estado", barmode="stack",
-                        color_discrete_map=COLORS,
-                        category_orders={"Estado":["No Realizado","Incompleto","Completo"]})
-        fig_mg.update_traces(hovertemplate="<b>%{x}</b><br>%{data.name}: %{y}<extra></extra>",
-                             marker_line_width=0)
-        apply_base(fig_mg, h=340)
-        fig_mg.update_layout(xaxis=dict(title="", gridcolor="#F3F4F6", tickangle=-30),
-                              yaxis=dict(title="", gridcolor="#F3F4F6"))
-        st.plotly_chart(fig_mg, use_container_width=True, config={"displayModeBar": False})
+    # ── Tasa por proyecto ──
+    st.markdown(f'<div class="dash-card"><div class="card-title">Tasa de Cumplimiento por Proyecto</div><div class="card-sub">% de completos sobre el total del plan, incluidos planeados · Meta: {META}%</div>', unsafe_allow_html=True)
+    if not df2.empty:
+        t_df = (df2.groupby("Proyecto")
+                   .apply(lambda g: pd.Series({
+                       "tasa": round((g["Cantidad_num"] == 1).sum() / len(g) * 100, 1) if len(g) > 0 else 0.0,
+                       "comp": int((g["Cantidad_num"] == 1).sum()),
+                       "plan": int((g["Cantidad"] == "*").sum()),
+                       "tot": len(g),
+                   }))
+                   .reset_index()
+                   .sort_values("tasa", ascending=False))
+        fig_tasa = go.Figure(go.Bar(
+            x=t_df["tasa"], y=t_df["Proyecto"],
+            orientation="h",
+            marker_color=[bar_col(t) for t in t_df["tasa"]],
+            marker_line_width=0,
+            text=t_df["tasa"].map(lambda t: f"{t:.1f}%"),
+            textposition="outside",
+            textfont=dict(size=11, color="#6B7280"),
+            customdata=t_df[["comp", "plan", "tot"]].values,
+            hovertemplate="<b>%{y}</b><br>Cumplimiento: %{x:.1f}%<br>Completos: %{customdata[0]}<br>Planeados: %{customdata[1]}<br>Total plan: %{customdata[2]}<extra></extra>",
+        ))
+        fig_tasa.add_vline(x=META, line_dash="dot", line_color="#7BA7D4", line_width=1.5,
+                           annotation_text=f"Meta {META}%",
+                           annotation_font_color="#7BA7D4", annotation_font_size=10,
+                           annotation_position="top right")
+        apply_base(fig_tasa, h=340, legend_h=False)
+        fig_tasa.update_layout(
+            showlegend=False,
+            xaxis=dict(range=[0,115], gridcolor="#F3F4F6", ticksuffix="%", title=""),
+            yaxis=dict(gridwidth=0, title=""),
+        )
+        st.plotly_chart(fig_tasa, use_container_width=True, config={"displayModeBar": False})
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
