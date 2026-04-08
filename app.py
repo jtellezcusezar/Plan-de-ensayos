@@ -129,7 +129,14 @@ def load_data():
     for c in ["Proyecto","MATERIAL","ETAPA","ENSAYO","NTC","FRECUENCIA"]:
         df[c] = df[c].str.strip()
     df["MesNombre"]    = df["Mes"].map(MESES)
-    df["Estado"]       = df["Cantidad"].map(lambda x: ESTADO_MAP.get(x, str(x)))
+    def _map_estado(x):
+        if x in ESTADO_MAP:
+            return ESTADO_MAP[x]
+        try:
+            return ESTADO_MAP.get(float(x), str(x))
+        except (ValueError, TypeError):
+            return str(x)
+    df["Estado"] = df["Cantidad"].map(_map_estado)
     df["EsEjecutado"]  = df["Cantidad"] != "*"
     df["Cantidad_num"] = pd.to_numeric(df["Cantidad"], errors="coerce")
     return df
