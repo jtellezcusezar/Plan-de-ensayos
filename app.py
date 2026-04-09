@@ -411,7 +411,8 @@ with tab2:
                        "tasa": round((((g["Cantidad_num"] == 1).sum()) + ((g["Cantidad_num"] == 0.5).sum() * 0.5)) / len(g[g["Mes"].isin(MESES_VENCIDOS)]) * 100, 1)
                                if len(g[g["Mes"].isin(MESES_VENCIDOS)]) > 0 else 0.0,
                        "comp": int((g["Cantidad_num"] == 1).sum()),
-                       "plan": int((g[g["Mes"].isin(MESES_VENCIDOS)]["Cantidad"] == "*").sum()),
+                       "inc": int((g["Cantidad_num"] == 0.5).sum()),
+                       "no_r": int((g["Cantidad_num"] == 0).sum()),
                        "tot": len(g[g["Mes"].isin(MESES_VENCIDOS)]),
                    }))
                    .reset_index()
@@ -424,8 +425,8 @@ with tab2:
             text=t_df["tasa"].map(lambda t: f"{t:.1f}%"),
             textposition="outside",
             textfont=dict(size=11, color="#6B7280"),
-            customdata=t_df[["comp", "plan", "tot"]].values,
-            hovertemplate="<b>%{y}</b><br>Cumplimiento: %{x:.1f}%<br>Completos: %{customdata[0]}<br>Planeados en meses vencidos: %{customdata[1]}<br>Total plan meses vencidos: %{customdata[2]}<extra></extra>",
+            customdata=t_df[["comp", "inc", "no_r", "tot"]].values,
+            hovertemplate="<b>%{y}</b><br>Cumplimiento: %{x:.1f}%<br>Completos: %{customdata[0]}<br>Incompletos: %{customdata[1]}<br>No realizados: %{customdata[2]}<br>Total plan meses vencidos: %{customdata[3]}<extra></extra>",
         ))
         fig_tasa.add_vline(x=META, line_dash="dot", line_color="#7BA7D4", line_width=1.5,
                            annotation_text=f"Meta {META}%",
