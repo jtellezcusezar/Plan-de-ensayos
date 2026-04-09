@@ -12,7 +12,7 @@ st.set_page_config(
 # ── CONSTANTES ─────────────────────────────────────────────────────────────────
 MESES = {1:"Enero",2:"Febrero",3:"Marzo",4:"Abril",5:"Mayo",6:"Junio",
          7:"Julio",8:"Agosto",9:"Septiembre",10:"Octubre",11:"Noviembre",12:"Diciembre"}
-ESTADO_MAP = {"*":"Planeado", 0:"No Realizado", 0.5:"Incompleto", 1:"Completo"}
+ESTADO_MAP = {"*":"Planeado", "0":"No Realizado", "0,5":"Incompleto", "1":"Completo"}
 META = 90
 
 COLORS = {
@@ -129,10 +129,19 @@ def load_data(file_mtime):
     df = pd.read_excel(EXCEL_PATH, sheet_name="Ensayos", header=0)
     for c in ["Proyecto","MATERIAL","ETAPA","ENSAYO","NTC","FRECUENCIA"]:
         df[c] = df[c].str.strip()
+    df["Cantidad"] = df["Cantidad"].astype(str).str.strip()
+    df["Cantidad"] = df["Cantidad"].replace({
+        "0.0": "0",
+        "1.0": "1",
+        "0.5": "0,5",
+    })
     df["MesNombre"]    = df["Mes"].map(MESES)
     df["Estado"]       = df["Cantidad"].map(lambda x: ESTADO_MAP.get(x, str(x)))
     df["EsEjecutado"]  = df["Cantidad"] != "*"
-    df["Cantidad_num"] = pd.to_numeric(df["Cantidad"], errors="coerce")
+    df["Cantidad_num"] = pd.to_numeric(
+        df["Cantidad"].replace({"0,5": "0.5", "*": None}),
+        errors="coerce"
+    )
     return df
 
 df_full = load_data(EXCEL_PATH.stat().st_mtime)
