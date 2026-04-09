@@ -202,6 +202,19 @@ def normalize_status_series(series):
         "": None,
     })
 
+def parse_text_value(value):
+    if value is None or pd.isna(value):
+        return None
+    txt = str(value).strip()
+    if txt in {"", "None", "nan", "*"}:
+        return None
+    txt = txt.replace("%", "").replace(",", ".")
+    try:
+        num = float(txt)
+    except ValueError:
+        return None
+    return num * 100 if 0 <= num <= 1 else num
+
 @st.cache_data
 def load_data(file_mtime):
     df_ensayos = read_excel_table(EXCEL_PATH, "Ensayos")
@@ -313,6 +326,8 @@ def control_area_mask(df, area):
         return (df["Area"] == "-") & (df["Control"] == "Curado")
     if area == "Producto terminado":
         return pd.Series([False] * len(df), index=df.index)
+    if area == "Torre":
+        return (df["Area"] == area) & (~df["Etapa"].astype(str).str.contains("Producto terminado", case=False, na=False))
     return df["Area"] == area
 
 def control_row_label(row):
@@ -364,8 +379,13 @@ def build_heatmap_rows(df_ctrl, df_ens, area):
                 row_html.append('<td class="hna">—</td>')
             else:
                 if area == "Curado":
-                    val = vals.iloc[-1]
-                    t = round(val * 100, 1)
+                    raw_vals = ctrl_proy.loc[ctrl_proy["Mes"] == m, "Valor"].dropna()
+                    parsed_vals = [parse_text_value(v) for v in raw_vals]
+                    parsed_vals = [v for v in parsed_vals if v is not None]
+                    if not parsed_vals:
+                        row_html.append('<td class="hna">—</td>')
+                        continue
+                    t = round(parsed_vals[-1], 1)
                     row_html.append(f'<td class="{hm_cls(t)}" title="Valor registrado">{t:.0f}%</td>')
                 else:
                     t = round(vals.mean() * 100, 1)
