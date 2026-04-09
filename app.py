@@ -566,3 +566,4 @@ with tab4:
     else:
         st.info("ℹ️ No se encontraron ensayos con los filtros aplicados.")
     st.markdown('</div>', unsafe_allow_html=True)
+
