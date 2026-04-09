@@ -2,8 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from datetime import datetime
-from zoneinfo import ZoneInfo
 
 st.set_page_config(
     page_title="Plan de Ensayos 2026", page_icon="🏗️",
@@ -137,12 +135,6 @@ def load_data():
 df_full = load_data()
 meses_con_datos = sorted(df_full[df_full["EsEjecutado"]]["Mes"].unique().tolist())
 mes_label = " – ".join([MESES[meses_con_datos[0]], MESES[meses_con_datos[-1]]]) if len(meses_con_datos) > 1 else MESES[meses_con_datos[0]]
-MES_ACTUAL = datetime.now(ZoneInfo("America/Bogota")).month
-MESES_VENCIDOS = list(range(1, MES_ACTUAL))
-meses_vencidos_label = "Sin meses vencidos" if not MESES_VENCIDOS else (
-    MESES[MESES_VENCIDOS[0]] if len(MESES_VENCIDOS) == 1
-    else f"{MESES[MESES_VENCIDOS[0]]} – {MESES[MESES_VENCIDOS[-1]]}"
-)
 
 ALL_P   = ["Todos"] + sorted(df_full["Proyecto"].unique().tolist())
 ALL_E   = ["Todas"] + sorted(df_full["ETAPA"].unique().tolist())
@@ -379,19 +371,14 @@ with tab2:
     st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Tasa por proyecto ──
-    st.markdown(f'<div class="dash-card"><div class="card-title">Tasa de Cumplimiento por Proyecto</div><div class="card-sub">% de completos + incompletos sobre el acumulado del plan en meses vencidos ({meses_vencidos_label}) · Meta: {META}%</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="dash-card"><div class="card-title">Tasa de Cumplimiento por Proyecto</div><div class="card-sub">% de completos sobre el total del plan hasta el último mes con datos, incluidos planeados · Meta: {META}%</div>', unsafe_allow_html=True)
     if not df2.empty:
         t_df = (df2.groupby("Proyecto")
                    .apply(lambda g: pd.Series({
-                       "tasa": round(
-                           g[g["Mes"].isin(MESES_VENCIDOS)]["Cantidad_num"].isin([1, 0.5]).sum()
-                           / len(g[g["Mes"].isin(MESES_VENCIDOS)]) * 100,
-                           1
-                       ) if len(g[g["Mes"].isin(MESES_VENCIDOS)]) > 0 else 0.0,
-                       "comp": int((g[g["Mes"].isin(MESES_VENCIDOS)]["Cantidad_num"] == 1).sum()),
-                       "inc": int((g[g["Mes"].isin(MESES_VENCIDOS)]["Cantidad_num"] == 0.5).sum()),
-                       "plan": int((g[g["Mes"].isin(MESES_VENCIDOS)]["Cantidad"] == "*").sum()),
-                       "tot": len(g[g["Mes"].isin(MESES_VENCIDOS)]),
+                       "tasa": round((g[g["Mes"].isin(meses_con_datos)]["Cantidad_num"] == 1).sum() / len(g[g["Mes"].isin(meses_con_datos)]) * 100, 1) if len(g[g["Mes"].isin(meses_con_datos)]) > 0 else 0.0,
+                       "comp": int((g[g["Mes"].isin(meses_con_datos)]["Cantidad_num"] == 1).sum()),
+                       "plan": int((g[g["Mes"].isin(meses_con_datos)]["Cantidad"] == "*").sum()),
+                       "tot": len(g[g["Mes"].isin(meses_con_datos)]),
                    }))
                    .reset_index()
                    .sort_values("tasa", ascending=False))
@@ -403,8 +390,8 @@ with tab2:
             text=t_df["tasa"].map(lambda t: f"{t:.1f}%"),
             textposition="outside",
             textfont=dict(size=11, color="#6B7280"),
-            customdata=t_df[["comp", "inc", "plan", "tot"]].values,
-            hovertemplate="<b>%{y}</b><br>Cumplimiento: %{x:.1f}%<br>Completos: %{customdata[0]}<br>Incompletos: %{customdata[1]}<br>Planeados: %{customdata[2]}<br>Total acumulado meses vencidos: %{customdata[3]}<extra></extra>",
+            customdata=t_df[["comp", "plan", "tot"]].values,
+            hovertemplate="<b>%{y}</b><br>Cumplimiento: %{x:.1f}%<br>Completos: %{customdata[0]}<br>Planeados: %{customdata[1]}<br>Total plan hasta mes con datos: %{customdata[2]}<extra></extra>",
         ))
         fig_tasa.add_vline(x=META, line_dash="dot", line_color="#7BA7D4", line_width=1.5,
                            annotation_text=f"Meta {META}%",
