@@ -29,7 +29,7 @@ COLORS = {
 BASE_LAYOUT = dict(
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
-    font=dict(family="Inter, sans-serif", color="#374151", size=12),
+    font=dict(family="Inter, sans-serif", color="#272829", size=12),
     margin=dict(t=40, b=10, l=10, r=10),
     hoverlabel=dict(
         bgcolor="#1E293B", font_color="#F1F5F9",
@@ -176,7 +176,7 @@ def get_kpis(df):
     plan = int(len(df))
     pend = int((df["Cantidad"] == "*").sum())
     tot  = comp + inc + no_r
-    tasa = round(comp / tot * 100, 1) if tot > 0 else 0.0
+    tasa = round((comp + inc * 0.5) / tot * 100, 1) if tot > 0 else 0.0
     return comp, inc, no_r, plan, pend, tot, tasa
 
 def filt(df, col, val, empty_val):
@@ -291,7 +291,7 @@ with tab1:
         ex1 = df1[df1["EsEjecutado"] & (df1["Estado"] != "Planeado")]
         if not ex1.empty:
             orden = (ex1.groupby("Proyecto")
-                       .apply(lambda g: (g["Cantidad_num"]==1).sum() / len(g) * 100)
+                       .apply(lambda g: (((g["Cantidad_num"] == 1).sum()) + ((g["Cantidad_num"] == 0.5).sum() * 0.5)) / len(g) * 100)
                        .sort_values().index.tolist())
             pg = ex1.groupby(["Proyecto","Estado"])["Cantidad_num"].count().reset_index()
             pg.columns = ["Proyecto","Estado","n"]
@@ -408,7 +408,7 @@ with tab2:
     if not df2.empty:
         t_df = (df2.groupby("Proyecto")
                    .apply(lambda g: pd.Series({
-                       "tasa": round((g["Cantidad_num"] == 1).sum() / len(g[g["Mes"].isin(MESES_VENCIDOS)]) * 100, 1)
+                       "tasa": round((((g["Cantidad_num"] == 1).sum()) + ((g["Cantidad_num"] == 0.5).sum() * 0.5)) / len(g[g["Mes"].isin(MESES_VENCIDOS)]) * 100, 1)
                                if len(g[g["Mes"].isin(MESES_VENCIDOS)]) > 0 else 0.0,
                        "comp": int((g["Cantidad_num"] == 1).sum()),
                        "plan": int((g[g["Mes"].isin(MESES_VENCIDOS)]["Cantidad"] == "*").sum()),
@@ -457,7 +457,7 @@ with tab3:
     tasa3 = (df3[df3["EsEjecutado"]]
                .groupby("Proyecto")
                .apply(lambda g: pd.Series({
-                   "tasa": round((g["Cantidad_num"]==1).sum()/len(g)*100, 1) if len(g) > 0 else 0.0,
+                   "tasa": round((((g["Cantidad_num"] == 1).sum()) + ((g["Cantidad_num"] == 0.5).sum() * 0.5)) / len(g) * 100, 1) if len(g) > 0 else 0.0,
                    "ej":   len(g),
                    "crit": int((g["Cantidad_num"]==0).sum()),
                }))
