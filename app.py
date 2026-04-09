@@ -18,6 +18,46 @@ MESES = {1:"Enero",2:"Febrero",3:"Marzo",4:"Abril",5:"Mayo",6:"Junio",
 ESTADO_MAP = {"*":"Planeado", "0":"No Realizado", "0,5":"Incompleto", "1":"Completo"}
 META = 90
 
+CONTROL_AREA_OPTIONS = ["Torre", "Zonas comunes", "Diseño", "Curado"]
+
+PRODUCTO_TERMINADO_ENSAYOS = [
+    ("Estructura", "Acero", "Ferroscan"),
+    ("Estructura", "Pilotaje", "Pruebas Pit"),
+    ("Obra Gris", "Muretes", "Resistencia a la Compresión (muros internos)"),
+    ("Obra Gris", "Muretes", "Resistencia a la Compresión (fachadas)"),
+    ("Obra Gris", "Muretes", "Resistencia a la Compresión (Mamposteria Estructural)"),
+    ("Obra Gris", "Acero", "Ferroscan"),
+    ("Obra Blanca", "Ascensores", "Certificado de ascensores"),
+    ("Obra Blanca", "Puertas Eléctricas", "Certificado de puertas electricas"),
+    ("Obra Blanca", "Equipo de Suministro", "Manografo"),
+    ("Obra Blanca", "Equipo de Suministro", "Certificado de lavado de tanques"),
+    ("Obra Blanca", "Red Contra Incendios", "Hidrostatica"),
+    ("Obra Blanca", "Red Contra Incendios", "Apertura maual de valvulas"),
+    ("Obra Blanca", "Red Contra Incendios", "Pitometrica"),
+    ("Obra Blanca", "Seguridad y Control", "Señalización e iluminacion ruta de evacuación"),
+    ("Obra Blanca", "Electrica", "Apantallamiento"),
+    ("Obra Blanca", "Barandas", "Prueba de carga baranda"),
+    ("Obra Blanca", "Impermeabilización de Cubierta", "Estanqueidad en placas descubiertas"),
+    ("Obra Blanca", "Impermeabilización de Fachada", "Tubo Rilem o pipetas de Karsten."),
+    ("Obra Blanca", "Impermeabilización de Fachada", "Prueba de Perlado"),
+]
+
+PRODUCTO_TERMINADO_CONTROLES = [
+    ("Torre", "estructura", "Control instalaciones Sanitarias"),
+    ("Torre", "estructura", "Control Instalaciones Sanitarias (Flujo)"),
+    ("Torre", "Obra gris y obra blanca", "Acta de liberacion Pañete"),
+    ("Torre", "Obra gris y obra blanca", "Acta de liberacion Mamposteria"),
+    ("Torre", "Obra gris y obra blanca", "Afinados de pisos"),
+    ("Torre", "Obra gris y obra blanca", "Control Aparatos Sanitarios"),
+    ("Torre", "Obra gris y obra blanca", "Control de pintura"),
+    ("Torre", "Producto terminado", "Control instrumentacion pantallas"),
+    ("Torre", "Producto terminado", "Actas de liberacion control Niveles placa techo estructura"),
+    ("Torre", "Producto terminado", "Control de Asentamiento"),
+    ("Torre", "Producto terminado", "Niveles de ruido"),
+    ("Torre", "Producto terminado", "Prueba de estanqueidad, Terrazas"),
+    ("Torre", "Producto terminado", "Inspección recepción foso de ascensor"),
+]
+
 COLORS = {
     "Planeado":     "#7BA7D4",
     "Completo":     "#6BBF9E",
@@ -151,6 +191,17 @@ def normalize_text_columns(df):
             df[col] = df[col].astype(str).str.strip()
     return df
 
+def normalize_status_series(series):
+    series = series.astype(str).str.strip()
+    return series.replace({
+        "0.0": "0",
+        "1.0": "1",
+        "0.5": "0,5",
+        "nan": None,
+        "None": None,
+        "": None,
+    })
+
 @st.cache_data
 def load_data(file_mtime):
     df_ensayos = read_excel_table(EXCEL_PATH, "Ensayos")
@@ -165,13 +216,14 @@ def load_data(file_mtime):
 
     df_controles = read_excel_table(EXCEL_PATH, "Controles")
     df_controles = normalize_text_columns(df_controles)
+    if "Valor" in df_controles.columns:
+        df_controles["Valor"] = normalize_status_series(df_controles["Valor"])
+        df_controles["Valor_num"] = pd.to_numeric(
+            df_controles["Valor"].replace({"0,5": "0.5", "*": None}),
+            errors="coerce"
+        )
 
-    df_ensayos["Cantidad"] = df_ensayos["Cantidad"].astype(str).str.strip()
-    df_ensayos["Cantidad"] = df_ensayos["Cantidad"].replace({
-        "0.0": "0",
-        "1.0": "1",
-        "0.5": "0,5",
-    })
+    df_ensayos["Cantidad"] = normalize_status_series(df_ensayos["Cantidad"])
     df_ensayos["MesNombre"]    = df_ensayos["Mes"].map(MESES)
     df_ensayos["Estado"]       = df_ensayos["Cantidad"].map(lambda x: ESTADO_MAP.get(x, str(x)))
     df_ensayos["EsEjecutado"]  = df_ensayos["Cantidad"] != "*"
@@ -196,6 +248,8 @@ ALL_E   = ["Todas"] + sorted(df_full["ETAPA"].unique().tolist())
 ALL_M   = ["Todos"] + list(MESES.values())
 ALL_MAT = ["Todos"] + sorted(df_full["MATERIAL"].unique().tolist())
 ALL_EST = ["Todos"] + list(ESTADO_MAP.values())
+ALL_CIUD = ["Todas"] + sorted(df_controles["Ciudad"].dropna().unique().tolist()) if "Ciudad" in df_controles.columns else ["Todas"]
+ALL_PC = ["Todos"] + sorted(df_controles["Proyecto"].dropna().unique().tolist()) if "Proyecto" in df_controles.columns else ["Todos"]
 
 # ── HELPERS ────────────────────────────────────────────────────────────────────
 def kpi(icon, label, value, sub, css):
@@ -245,6 +299,76 @@ def sem_card(name, tasa, ej, crit):
 def bar_col(t):
     return COLORS["Completo"] if t >= META else COLORS["Incompleto"] if t >= META * 0.6 else COLORS["No Realizado"]
 
+def control_area_title(area):
+    return {
+        "Torre": "Control de Torres",
+        "Zonas comunes": "Control de Zonas Comunes",
+        "Diseño": "Control de Diseño",
+        "Curado": "Control de Curado",
+    }.get(area, f"Control de {area}")
+
+def control_area_mask(df, area):
+    if area == "Curado":
+        return (df["Area"] == "-") & (df["Control"] == "Curado")
+    return df["Area"] == area
+
+def control_row_label(row):
+    etapa = str(row.get("Etapa", "")).strip()
+    control = str(row.get("Control", "")).strip()
+    if not etapa or etapa in {"-", "nan", "None"}:
+        return control
+    return f"{etapa} - {control}"
+
+def build_heatmap_rows(df_ctrl, df_ens, area):
+    rows = []
+    ctrl_filtered = df_ctrl[control_area_mask(df_ctrl, area)].copy()
+    if not ctrl_filtered.empty:
+        ctrl_filtered["RowLabel"] = ctrl_filtered.apply(control_row_label, axis=1)
+        for label, grp in ctrl_filtered.groupby("RowLabel", sort=True):
+            row_html = [f'<tr><td class="hmpn">{label}</td>']
+            for m in range(1, 13):
+                vals = grp.loc[grp["Mes"] == m, "Valor_num"].dropna()
+                if vals.empty:
+                    row_html.append('<td class="hna">—</td>')
+                else:
+                    t = round(vals.mean() * 100, 1)
+                    row_html.append(f'<td class="{hm_cls(t)}" title="Promedio de {len(vals)} valores">{t:.0f}%</td>')
+            row_html.append("</tr>")
+            rows.append("".join(row_html))
+
+    if area == "Torre":
+        ens_parts = []
+        for etapa, material, ensayo in PRODUCTO_TERMINADO_ENSAYOS:
+            mask = (
+                (df_ens["ETAPA"] == etapa) &
+                (df_ens["MATERIAL"] == material) &
+                (df_ens["ENSAYO"] == ensayo)
+            )
+            ens_parts.append(df_ens.loc[mask, ["Mes", "Cantidad_num"]].rename(columns={"Cantidad_num": "Valor_num"}))
+
+        ctrl_parts = []
+        for area_v, etapa_v, control_v in PRODUCTO_TERMINADO_CONTROLES:
+            mask = (
+                (df_ctrl["Area"] == area_v) &
+                (df_ctrl["Etapa"] == etapa_v) &
+                (df_ctrl["Control"] == control_v)
+            )
+            ctrl_parts.append(df_ctrl.loc[mask, ["Mes", "Valor_num"]])
+
+        combined = pd.concat(ens_parts + ctrl_parts, ignore_index=True) if (ens_parts or ctrl_parts) else pd.DataFrame(columns=["Mes", "Valor_num"])
+        row_html = ['<tr><td class="hmpn">Control de Producto Terminado</td>']
+        for m in range(1, 13):
+            vals = combined.loc[combined["Mes"] == m, "Valor_num"].dropna()
+            if vals.empty:
+                row_html.append('<td class="hna">—</td>')
+            else:
+                t = round(vals.mean() * 100, 1)
+                row_html.append(f'<td class="{hm_cls(t)}" title="Promedio de {len(vals)} valores">{t:.0f}%</td>')
+        row_html.append("</tr>")
+        rows.append("".join(row_html))
+
+    return rows
+
 # ── HEADER ─────────────────────────────────────────────────────────────────────
 st.markdown(f"""
 <div class="app-header">
@@ -260,11 +384,12 @@ st.markdown(f"""
 </div><div style="height:8px"></div>
 """, unsafe_allow_html=True)
 
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📊  Resumen General",
     "🏗️  Por Proyecto y Material",
     "📅  Línea de Tiempo y Alertas",
     "🔍  Consulta de Ensayos",
+    "🛠️  Controles",
 ])
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -636,3 +761,43 @@ with tab4:
     else:
         st.info("ℹ️ No se encontraron ensayos con los filtros aplicados.")
     st.markdown('</div>', unsafe_allow_html=True)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 5
+# ══════════════════════════════════════════════════════════════════════════════
+with tab5:
+    st.markdown("### 🛠️ Controles")
+    st.markdown("Consulta el avance mensual de controles por ciudad, proyecto y tipo de control.")
+    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+
+    st.markdown('<div class="filter-bar"><div class="filter-bar-title">⚙ Filtros</div>', unsafe_allow_html=True)
+    c5a, c5b, c5c = st.columns(3)
+    sel5_ciud = c5a.selectbox("Ciudad", ALL_CIUD, key="t5c")
+    sel5_proy = c5b.selectbox("Proyecto", ALL_PC, key="t5p")
+    sel5_area = c5c.selectbox("Area", CONTROL_AREA_OPTIONS, index=0, key="t5a")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    df5_ctrl = df_controles.copy()
+    df5_ens = df_full.copy()
+    if sel5_ciud != "Todas":
+        df5_ctrl = df5_ctrl[df5_ctrl["Ciudad"] == sel5_ciud]
+        df5_ens = df5_ens[df5_ens["Ciudad"] == sel5_ciud]
+    if sel5_proy != "Todos":
+        df5_ctrl = df5_ctrl[df5_ctrl["Proyecto"] == sel5_proy]
+        df5_ens = df5_ens[df5_ens["Proyecto"] == sel5_proy]
+
+    title5 = control_area_title(sel5_area)
+    st.markdown(f'<div class="dash-card"><div class="card-title">{title5}</div><div class="card-sub">Promedio mensual con 12 meses fijos. Los registros sin valor no se incluyen en el cálculo.</div>', unsafe_allow_html=True)
+
+    rows5 = build_heatmap_rows(df5_ctrl, df5_ens, sel5_area)
+    ths5 = "".join(f"<th>{MESES[m][:3]}</th>" for m in range(1, 13))
+    if rows5:
+        st.markdown(
+            f'<div class="hm-wrap"><table class="hm-table"><thead><tr><th class="hmp">Control</th>{ths5}</tr></thead>'
+            f'<tbody>{"".join(rows5)}</tbody></table></div>',
+            unsafe_allow_html=True
+        )
+    else:
+        st.info("ℹ️ No se encontraron controles con los filtros aplicados.")
+    st.markdown('</div>', unsafe_allow_html=True)
+
