@@ -322,43 +322,42 @@ def control_row_label(row):
 def build_heatmap_rows(df_ctrl, df_ens, area):
     rows = []
     ctrl_filtered = df_ctrl[control_area_mask(df_ctrl, area)].copy()
-    if not ctrl_filtered.empty:
-        ctrl_filtered["RowLabel"] = ctrl_filtered.apply(control_row_label, axis=1)
-        for label, grp in ctrl_filtered.groupby("RowLabel", sort=True):
-            row_html = [f'<tr><td class="hmpn">{label}</td>']
-            for m in range(1, 13):
-                vals = grp.loc[grp["Mes"] == m, "Valor_num"].dropna()
-                if vals.empty:
-                    row_html.append('<td class="hna">—</td>')
-                else:
-                    t = round(vals.mean() * 100, 1)
-                    row_html.append(f'<td class="{hm_cls(t)}" title="Promedio de {len(vals)} valores">{t:.0f}%</td>')
-            row_html.append("</tr>")
-            rows.append("".join(row_html))
+    proyectos = sorted(
+        set(ctrl_filtered["Proyecto"].dropna().tolist()) |
+        set(df_ens["Proyecto"].dropna().tolist())
+    )
 
-    if area == "Torre":
+    for proyecto in proyectos:
+        row_html = [f'<tr><td class="hmpn">{proyecto}</td>']
+        ctrl_proy = ctrl_filtered[ctrl_filtered["Proyecto"] == proyecto]
+
         ens_parts = []
-        for etapa, material, ensayo in PRODUCTO_TERMINADO_ENSAYOS:
-            mask = (
-                (df_ens["ETAPA"] == etapa) &
-                (df_ens["MATERIAL"] == material) &
-                (df_ens["ENSAYO"] == ensayo)
-            )
-            ens_parts.append(df_ens.loc[mask, ["Mes", "Cantidad_num"]].rename(columns={"Cantidad_num": "Valor_num"}))
-
         ctrl_parts = []
-        for area_v, etapa_v, control_v in PRODUCTO_TERMINADO_CONTROLES:
-            mask = (
-                (df_ctrl["Area"] == area_v) &
-                (df_ctrl["Etapa"] == etapa_v) &
-                (df_ctrl["Control"] == control_v)
-            )
-            ctrl_parts.append(df_ctrl.loc[mask, ["Mes", "Valor_num"]])
+        if area == "Torre":
+            for etapa, material, ensayo in PRODUCTO_TERMINADO_ENSAYOS:
+                mask = (
+                    (df_ens["Proyecto"] == proyecto) &
+                    (df_ens["ETAPA"] == etapa) &
+                    (df_ens["MATERIAL"] == material) &
+                    (df_ens["ENSAYO"] == ensayo)
+                )
+                ens_parts.append(df_ens.loc[mask, ["Mes", "Cantidad_num"]].rename(columns={"Cantidad_num": "Valor_num"}))
 
-        combined = pd.concat(ens_parts + ctrl_parts, ignore_index=True) if (ens_parts or ctrl_parts) else pd.DataFrame(columns=["Mes", "Valor_num"])
-        row_html = ['<tr><td class="hmpn">Control de Producto Terminado</td>']
+            for area_v, etapa_v, control_v in PRODUCTO_TERMINADO_CONTROLES:
+                mask = (
+                    (df_ctrl["Proyecto"] == proyecto) &
+                    (df_ctrl["Area"] == area_v) &
+                    (df_ctrl["Etapa"] == etapa_v) &
+                    (df_ctrl["Control"] == control_v)
+                )
+                ctrl_parts.append(df_ctrl.loc[mask, ["Mes", "Valor_num"]])
+
+        extras = pd.concat(ens_parts + ctrl_parts, ignore_index=True) if (ens_parts or ctrl_parts) else pd.DataFrame(columns=["Mes", "Valor_num"])
+
         for m in range(1, 13):
-            vals = combined.loc[combined["Mes"] == m, "Valor_num"].dropna()
+            vals_ctrl = ctrl_proy.loc[ctrl_proy["Mes"] == m, "Valor_num"].dropna()
+            vals_extra = extras.loc[extras["Mes"] == m, "Valor_num"].dropna()
+            vals = pd.concat([vals_ctrl, vals_extra], ignore_index=True)
             if vals.empty:
                 row_html.append('<td class="hna">—</td>')
             else:
@@ -793,7 +792,7 @@ with tab5:
     ths5 = "".join(f"<th>{MESES[m][:3]}</th>" for m in range(1, 13))
     if rows5:
         st.markdown(
-            f'<div class="hm-wrap"><table class="hm-table"><thead><tr><th class="hmp">Control</th>{ths5}</tr></thead>'
+            f'<div class="hm-wrap"><table class="hm-table"><thead><tr><th class="hmp">Proyecto</th>{ths5}</tr></thead>'
             f'<tbody>{"".join(rows5)}</tbody></table></div>',
             unsafe_allow_html=True
         )
