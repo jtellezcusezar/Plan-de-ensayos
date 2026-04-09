@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 from pathlib import Path
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from openpyxl import load_workbook
 
 st.set_page_config(
     page_title="Plan de Ensayos 2026", page_icon="🏗️",
@@ -126,27 +127,61 @@ div[data-testid="stDownloadButton"] button:hover{background:#7BA7D4!important;co
 # ── DATA ───────────────────────────────────────────────────────────────────────
 EXCEL_PATH = Path("Plan_de_ensayos_2026.xlsx")
 
+def read_excel_table(path, table_name):
+    """Lee una tabla nombrada de Excel sin depender del nombre de la hoja."""
+    wb = load_workbook(path, data_only=True, read_only=False)
+    try:
+        for ws in wb.worksheets:
+            if table_name in ws.tables:
+                ref = ws.tables[table_name].ref
+                rows = list(ws[ref])
+                data = [[cell.value for cell in row] for row in rows]
+                headers = data[0]
+                values = data[1:]
+                return pd.DataFrame(values, columns=headers)
+    finally:
+        wb.close()
+    raise ValueError(f"No se encontró la tabla '{table_name}' en {path}.")
+
+def normalize_text_columns(df):
+    """Limpia espacios en columnas de texto."""
+    df = df.copy()
+    for col in df.columns:
+        if pd.api.types.is_object_dtype(df[col]):
+            df[col] = df[col].astype(str).str.strip()
+    return df
+
 @st.cache_data
 def load_data(file_mtime):
-    df = pd.read_excel(EXCEL_PATH, sheet_name="Ensayos", header=0)
-    for c in ["Proyecto","MATERIAL","ETAPA","ENSAYO","NTC","FRECUENCIA"]:
-        df[c] = df[c].str.strip()
-    df["Cantidad"] = df["Cantidad"].astype(str).str.strip()
-    df["Cantidad"] = df["Cantidad"].replace({
+    df_ensayos = read_excel_table(EXCEL_PATH, "Ensayos")
+    df_ensayos = df_ensayos.rename(columns={
+        "Etapa": "ETAPA",
+        "Material": "MATERIAL",
+        "Ensayo": "ENSAYO",
+        "Frecuencia": "FRECUENCIA",
+        "Valor": "Cantidad",
+    })
+    df_ensayos = normalize_text_columns(df_ensayos)
+
+    df_controles = read_excel_table(EXCEL_PATH, "Controles")
+    df_controles = normalize_text_columns(df_controles)
+
+    df_ensayos["Cantidad"] = df_ensayos["Cantidad"].astype(str).str.strip()
+    df_ensayos["Cantidad"] = df_ensayos["Cantidad"].replace({
         "0.0": "0",
         "1.0": "1",
         "0.5": "0,5",
     })
-    df["MesNombre"]    = df["Mes"].map(MESES)
-    df["Estado"]       = df["Cantidad"].map(lambda x: ESTADO_MAP.get(x, str(x)))
-    df["EsEjecutado"]  = df["Cantidad"] != "*"
-    df["Cantidad_num"] = pd.to_numeric(
-        df["Cantidad"].replace({"0,5": "0.5", "*": None}),
+    df_ensayos["MesNombre"]    = df_ensayos["Mes"].map(MESES)
+    df_ensayos["Estado"]       = df_ensayos["Cantidad"].map(lambda x: ESTADO_MAP.get(x, str(x)))
+    df_ensayos["EsEjecutado"]  = df_ensayos["Cantidad"] != "*"
+    df_ensayos["Cantidad_num"] = pd.to_numeric(
+        df_ensayos["Cantidad"].replace({"0,5": "0.5", "*": None}),
         errors="coerce"
     )
-    return df
+    return df_ensayos, df_controles
 
-df_full = load_data(EXCEL_PATH.stat().st_mtime)
+df_full, df_controles = load_data(EXCEL_PATH.stat().st_mtime)
 meses_con_datos = sorted(df_full[df_full["EsEjecutado"]]["Mes"].unique().tolist())
 mes_label = " – ".join([MESES[meses_con_datos[0]], MESES[meses_con_datos[-1]]]) if len(meses_con_datos) > 1 else MESES[meses_con_datos[0]]
 MES_ACTUAL = datetime.now(ZoneInfo("America/Bogota")).month
