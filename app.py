@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from pathlib import Path
 
 st.set_page_config(
     page_title="Plan de Ensayos 2026", page_icon="🏗️",
@@ -121,9 +122,11 @@ div[data-testid="stDownloadButton"] button:hover{background:#7BA7D4!important;co
 """, unsafe_allow_html=True)
 
 # ── DATA ───────────────────────────────────────────────────────────────────────
+EXCEL_PATH = Path("Plan_de_ensayos_2026.xlsx")
+
 @st.cache_data
-def load_data():
-    df = pd.read_excel("Plan_de_ensayos_2026.xlsx", sheet_name="Ensayos", header=0)
+def load_data(file_mtime):
+    df = pd.read_excel(EXCEL_PATH, sheet_name="Ensayos", header=0)
     for c in ["Proyecto","MATERIAL","ETAPA","ENSAYO","NTC","FRECUENCIA"]:
         df[c] = df[c].str.strip()
     df["MesNombre"]    = df["Mes"].map(MESES)
@@ -132,7 +135,7 @@ def load_data():
     df["Cantidad_num"] = pd.to_numeric(df["Cantidad"], errors="coerce")
     return df
 
-df_full = load_data()
+df_full = load_data(EXCEL_PATH.stat().st_mtime)
 meses_con_datos = sorted(df_full[df_full["EsEjecutado"]]["Mes"].unique().tolist())
 mes_label = " – ".join([MESES[meses_con_datos[0]], MESES[meses_con_datos[-1]]]) if len(meses_con_datos) > 1 else MESES[meses_con_datos[0]]
 
@@ -566,4 +569,3 @@ with tab4:
     else:
         st.info("ℹ️ No se encontraron ensayos con los filtros aplicados.")
     st.markdown('</div>', unsafe_allow_html=True)
-
