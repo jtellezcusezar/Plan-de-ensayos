@@ -18,7 +18,7 @@ MESES = {1:"Enero",2:"Febrero",3:"Marzo",4:"Abril",5:"Mayo",6:"Junio",
 ESTADO_MAP = {"*":"Planeado", "0":"No Realizado", "0,5":"Incompleto", "1":"Completo"}
 META = 90
 
-CONTROL_AREA_OPTIONS = ["Torre", "Zonas comunes", "Diseño", "Curado"]
+CONTROL_AREA_OPTIONS = ["Torre", "Zonas comunes", "Diseño", "Curado", "Producto terminado"]
 
 PRODUCTO_TERMINADO_ENSAYOS = [
     ("Estructura", "Acero", "Ferroscan"),
@@ -305,11 +305,14 @@ def control_area_title(area):
         "Zonas comunes": "Control de Zonas Comunes",
         "Diseño": "Control de Diseño",
         "Curado": "Control de Curado",
+        "Producto terminado": "Control de Producto Terminado",
     }.get(area, f"Control de {area}")
 
 def control_area_mask(df, area):
     if area == "Curado":
         return (df["Area"] == "-") & (df["Control"] == "Curado")
+    if area == "Producto terminado":
+        return pd.Series([False] * len(df), index=df.index)
     return df["Area"] == area
 
 def control_row_label(row):
@@ -330,10 +333,9 @@ def build_heatmap_rows(df_ctrl, df_ens, area):
     for proyecto in proyectos:
         row_html = [f'<tr><td class="hmpn">{proyecto}</td>']
         ctrl_proy = ctrl_filtered[ctrl_filtered["Proyecto"] == proyecto]
-
         ens_parts = []
         ctrl_parts = []
-        if area == "Torre":
+        if area == "Producto terminado":
             for etapa, material, ensayo in PRODUCTO_TERMINADO_ENSAYOS:
                 mask = (
                     (df_ens["Proyecto"] == proyecto) &
@@ -361,8 +363,13 @@ def build_heatmap_rows(df_ctrl, df_ens, area):
             if vals.empty:
                 row_html.append('<td class="hna">—</td>')
             else:
-                t = round(vals.mean() * 100, 1)
-                row_html.append(f'<td class="{hm_cls(t)}" title="Promedio de {len(vals)} valores">{t:.0f}%</td>')
+                if area == "Curado":
+                    val = vals.iloc[-1]
+                    t = round(val * 100, 1)
+                    row_html.append(f'<td class="{hm_cls(t)}" title="Valor registrado">{t:.0f}%</td>')
+                else:
+                    t = round(vals.mean() * 100, 1)
+                    row_html.append(f'<td class="{hm_cls(t)}" title="Promedio de {len(vals)} valores">{t:.0f}%</td>')
         row_html.append("</tr>")
         rows.append("".join(row_html))
 
@@ -773,7 +780,7 @@ with tab5:
     c5a, c5b, c5c = st.columns(3)
     sel5_ciud = c5a.selectbox("Ciudad", ALL_CIUD, key="t5c")
     sel5_proy = c5b.selectbox("Proyecto", ALL_PC, key="t5p")
-    sel5_area = c5c.selectbox("Area", CONTROL_AREA_OPTIONS, index=0, key="t5a")
+    sel5_area = c5c.selectbox("Control", CONTROL_AREA_OPTIONS, index=0, key="t5a")
     st.markdown('</div>', unsafe_allow_html=True)
 
     df5_ctrl = df_controles.copy()
