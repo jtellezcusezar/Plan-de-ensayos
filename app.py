@@ -3,6 +3,8 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from pathlib import Path
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 st.set_page_config(
     page_title="Plan de Ensayos 2026", page_icon="🏗️",
@@ -147,6 +149,12 @@ def load_data(file_mtime):
 df_full = load_data(EXCEL_PATH.stat().st_mtime)
 meses_con_datos = sorted(df_full[df_full["EsEjecutado"]]["Mes"].unique().tolist())
 mes_label = " – ".join([MESES[meses_con_datos[0]], MESES[meses_con_datos[-1]]]) if len(meses_con_datos) > 1 else MESES[meses_con_datos[0]]
+MES_ACTUAL = datetime.now(ZoneInfo("America/Bogota")).month
+MESES_VENCIDOS = list(range(1, MES_ACTUAL))
+meses_vencidos_label = "Sin meses vencidos" if not MESES_VENCIDOS else (
+    MESES[MESES_VENCIDOS[0]] if len(MESES_VENCIDOS) == 1
+    else f"{MESES[MESES_VENCIDOS[0]]} – {MESES[MESES_VENCIDOS[-1]]}"
+)
 
 ALL_P   = ["Todos"] + sorted(df_full["Proyecto"].unique().tolist())
 ALL_E   = ["Todas"] + sorted(df_full["ETAPA"].unique().tolist())
@@ -259,10 +267,10 @@ with tab1:
         ec.columns = ["Estado","n"]
         ec["C"] = ec["Estado"].map(COLORS)
         fig_donut = go.Figure(go.Pie(
-            labels=ec["Estado"], values=ec["n"], hole=0.70,
+            labels=ec["Estado"], values=ec["n"], hole=0.58,
             marker_colors=ec["C"].tolist(),
             textinfo="percent",
-            textposition="inside",
+            textposition="outside",
             insidetextorientation="horizontal",
             hovertemplate="<b>%{label}</b><br>%{value:,} · %{percent}<extra></extra>",
         ))
@@ -358,6 +366,7 @@ with tab2:
     </div>""", unsafe_allow_html=True)
 
     rows_hm = []
+    totales_hm = {m: [] for m in range(1, 13)}
     for p in sorted(df2["Proyecto"].unique()):
         r = f'<tr><td class="hmpn">{p}</td>'
         for m in range(1, 13):
@@ -371,9 +380,21 @@ with tab2:
                 nn = int((sub_hm["Cantidad_num"]==0).sum())
                 prom = sub_hm["Cantidad_num"].mean()
                 t = round(prom * 100, 1) if pd.notna(prom) else 0.0
+                totales_hm[m].append(t)
                 r += f'<td class="{hm_cls(t)}" title="{cn} compl. · {iN} incompl. · {nn} no-real · Promedio: {prom:.2f}">{t:.0f}%</td>'
         r += "</tr>"
         rows_hm.append(r)
+
+    fila_total = '<tr><td class="hmpn"><strong>Total</strong></td>'
+    for m in range(1, 13):
+        vals = totales_hm[m]
+        if vals:
+            t = round(sum(vals) / len(vals), 1)
+            fila_total += f'<td class="{hm_cls(t)}" title="Promedio de {len(vals)} celdas con valor">{t:.0f}%</td>'
+        else:
+            fila_total += '<td class="hna">—</td>'
+    fila_total += "</tr>"
+    rows_hm.append(fila_total)
 
     ths = "".join(f"<th>{MESES[m][:3]}</th>" for m in range(1, 13))
     st.markdown(
@@ -383,14 +404,15 @@ with tab2:
     st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Tasa por proyecto ──
-    st.markdown(f'<div class="dash-card"><div class="card-title">Tasa de Cumplimiento por Proyecto</div><div class="card-sub">% de completos sobre el total del plan, incluidos planeados · Meta: {META}%</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="dash-card"><div class="card-title">Tasa de Cumplimiento por Proyecto</div><div class="card-sub">% de completos sobre el total planeado en meses vencidos ({meses_vencidos_label}) · Meta: {META}%</div>', unsafe_allow_html=True)
     if not df2.empty:
         t_df = (df2.groupby("Proyecto")
                    .apply(lambda g: pd.Series({
-                       "tasa": round((g["Cantidad_num"] == 1).sum() / len(g) * 100, 1) if len(g) > 0 else 0.0,
+                       "tasa": round((g["Cantidad_num"] == 1).sum() / len(g[g["Mes"].isin(MESES_VENCIDOS)]) * 100, 1)
+                               if len(g[g["Mes"].isin(MESES_VENCIDOS)]) > 0 else 0.0,
                        "comp": int((g["Cantidad_num"] == 1).sum()),
-                       "plan": int((g["Cantidad"] == "*").sum()),
-                       "tot": len(g),
+                       "plan": int((g[g["Mes"].isin(MESES_VENCIDOS)]["Cantidad"] == "*").sum()),
+                       "tot": len(g[g["Mes"].isin(MESES_VENCIDOS)]),
                    }))
                    .reset_index()
                    .sort_values("tasa", ascending=False))
@@ -403,7 +425,7 @@ with tab2:
             textposition="outside",
             textfont=dict(size=11, color="#6B7280"),
             customdata=t_df[["comp", "plan", "tot"]].values,
-            hovertemplate="<b>%{y}</b><br>Cumplimiento: %{x:.1f}%<br>Completos: %{customdata[0]}<br>Planeados: %{customdata[1]}<br>Total plan: %{customdata[2]}<extra></extra>",
+            hovertemplate="<b>%{y}</b><br>Cumplimiento: %{x:.1f}%<br>Completos: %{customdata[0]}<br>Planeados en meses vencidos: %{customdata[1]}<br>Total plan meses vencidos: %{customdata[2]}<extra></extra>",
         ))
         fig_tasa.add_vline(x=META, line_dash="dot", line_color="#7BA7D4", line_width=1.5,
                            annotation_text=f"Meta {META}%",
