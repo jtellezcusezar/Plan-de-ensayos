@@ -312,7 +312,7 @@ with tab1:
     for est, fc in [("Completo","rgba(107,191,158,.15)"), ("Incompleto",None), ("No Realizado",None)]:
         sub = (df1[df1["EsEjecutado"] & (df1["Estado"]==est)]
                  .groupby("Mes").size()
-                 .reindex(meses_con_datos, fill_value=0).reset_index())
+                 .reindex(range(1,13), fill_value=0).reset_index())
         sub.columns = ["Mes","n"]
         fig_line.add_trace(go.Scatter(
             x=sub["Mes"].map(lambda m: MESES[m]), y=sub["n"],
@@ -426,11 +426,11 @@ with tab3:
     st.markdown('<div class="filter-bar"><div class="filter-bar-title">⚙ Filtros</div>', unsafe_allow_html=True)
     f3a, f3b = st.columns([2, 1])
     sel3_proy = f3a.selectbox("Proyecto",      ALL_P,  key="t3p")
-    sel3_mes  = f3b.selectbox("Mes con datos", ["Todos"] + [MESES[m] for m in meses_con_datos], key="t3m")
+    sel3_mes  = f3b.selectbox("Mes vencido", ["Todos"] + [MESES[m] for m in MESES_VENCIDOS], key="t3m")
     st.markdown('</div>', unsafe_allow_html=True)
 
     df3 = filt(df_full, "Proyecto", sel3_proy, "Todos")
-    sm3 = meses_con_datos if sel3_mes == "Todos" else [k for k, v in MESES.items() if v == sel3_mes]
+    sm3 = MESES_VENCIDOS if sel3_mes == "Todos" else [k for k, v in MESES.items() if v == sel3_mes]
 
     # Semáforo
     tasa3 = (df3[df3["EsEjecutado"]]
