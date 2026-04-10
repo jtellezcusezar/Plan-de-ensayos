@@ -2,8 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import streamlit.components.v1 as components
-import tomllib
 from pathlib import Path
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -75,120 +73,6 @@ COLORS = {
     "No Realizado": "#D98B8B",
 }
 
-CONFIG_PATH = Path(".streamlit") / "config.toml"
-
-
-def _hex_to_rgb(value):
-    value = str(value).strip().lstrip("#")
-    if len(value) != 6:
-        return (0, 0, 0)
-    return tuple(int(value[i:i+2], 16) for i in (0, 2, 4))
-
-
-def _mix_hex(color_a, color_b, weight_a):
-    weight_a = max(0.0, min(1.0, float(weight_a)))
-    weight_b = 1.0 - weight_a
-    rgb_a = _hex_to_rgb(color_a)
-    rgb_b = _hex_to_rgb(color_b)
-    mixed = tuple(round((rgb_a[i] * weight_a) + (rgb_b[i] * weight_b)) for i in range(3))
-    return "#{:02X}{:02X}{:02X}".format(*mixed)
-
-
-def _theme_tokens(theme_cfg):
-    bg = theme_cfg.get("backgroundColor", "#F6F8FB")
-    surface = theme_cfg.get("secondaryBackgroundColor", "#FFFFFF")
-    text = theme_cfg.get("textColor", "#111827")
-    accent = theme_cfg.get("primaryColor", "#4A7BA8")
-    border = theme_cfg.get("borderColor") or _mix_hex(text, bg, 0.12)
-    return {
-        "bg": bg,
-        "surface": surface,
-        "surface-alt": _mix_hex(surface, bg, 0.88),
-        "text": text,
-        "muted": _mix_hex(text, bg, 0.68),
-        "border": border,
-        "grid": _mix_hex(text, bg, 0.10),
-        "hover-bg": _mix_hex(surface, bg, 0.82),
-        "accent": accent,
-        "accent-soft": _mix_hex(accent, surface, 0.16),
-        "accent-border": _mix_hex(accent, surface, 0.30),
-        "input-bg": _mix_hex(surface, bg, 0.92),
-        "focus-shadow": _rgba(accent, 0.18),
-        "scrollbar": _mix_hex(text, bg, 0.22),
-        "hm-100-bg": _mix_hex("#6BBF9E", surface, 0.38),
-        "hm-100-text": _mix_hex("#2D6A4F", text, 0.88),
-        "hm-75-bg": _mix_hex("#DDE8B2", surface, 0.50),
-        "hm-75-text": _mix_hex("#667A1E", text, 0.84),
-        "hm-50-bg": _mix_hex("#F4E1A6", surface, 0.56),
-        "hm-50-text": _mix_hex("#A97B12", text, 0.84),
-        "hm-25-bg": _mix_hex("#EEC39F", surface, 0.52),
-        "hm-25-text": _mix_hex("#A45724", text, 0.84),
-        "hm-0-bg": _mix_hex("#D98B8B", surface, 0.44),
-        "hm-0-text": _mix_hex("#8B2B2B", text, 0.86),
-        "hm-na-bg": _mix_hex(surface, bg, 0.85),
-        "hm-na-text": _mix_hex(text, bg, 0.44),
-        "badge-complete-bg": _mix_hex("#6BBF9E", surface, 0.16),
-        "badge-complete-text": _mix_hex("#3D8B6E", text, 0.88),
-        "badge-incomplete-bg": _mix_hex("#E8C17A", surface, 0.18),
-        "badge-incomplete-text": _mix_hex("#C49A3C", text, 0.88),
-        "badge-none-bg": _mix_hex("#D98B8B", surface, 0.18),
-        "badge-none-text": _mix_hex("#B05B5B", text, 0.88),
-        "badge-plan-bg": _mix_hex(accent, surface, 0.14),
-        "badge-plan-text": _mix_hex(accent, text, 0.84),
-        "ok-bg": _mix_hex("#6BBF9E", surface, 0.14),
-        "ok-border": _mix_hex("#6BBF9E", surface, 0.36),
-        "ok-text": _mix_hex("#3D8B6E", text, 0.82),
-        "shadow-soft": _rgba(text, 0.08),
-        "shadow-strong": _rgba(text, 0.14),
-    }
-
-
-def _load_theme_tokens():
-    defaults = {
-        "light": {
-            "primaryColor": "#4A7BA8",
-            "backgroundColor": "#F6F8FB",
-            "secondaryBackgroundColor": "#FFFFFF",
-            "textColor": "#111827",
-            "borderColor": "#E5E9F0",
-        },
-        "dark": {
-            "primaryColor": "#7BA7D4",
-            "backgroundColor": "#0F172A",
-            "secondaryBackgroundColor": "#111827",
-            "textColor": "#E5ECF6",
-            "borderColor": "#243041",
-        },
-    }
-    try:
-        with CONFIG_PATH.open("rb") as fh:
-            parsed = tomllib.load(fh)
-    except FileNotFoundError:
-        parsed = {}
-
-    theme_cfg = parsed.get("theme", {})
-    shared = {k: v for k, v in theme_cfg.items() if not isinstance(v, dict)}
-    light_cfg = {**defaults["light"], **shared, **theme_cfg.get("light", {})}
-    dark_cfg = {**defaults["dark"], **shared, **theme_cfg.get("dark", {})}
-    return {"light": _theme_tokens(light_cfg), "dark": _theme_tokens(dark_cfg)}
-
-
-def _css_var_block(selector, values):
-    lines = [f"{selector} {{"]
-    lines.extend(f"  --{key}: {value};" for key, value in values.items())
-    lines.append("}")
-    return "\n".join(lines)
-
-
-THEME_TOKENS = _load_theme_tokens()
-THEME_CSS = "\n".join([
-    _css_var_block(":root", THEME_TOKENS["light"]),
-    _css_var_block(':root[data-app-theme="light"]', THEME_TOKENS["light"]),
-    _css_var_block(':root[data-app-theme="dark"]', THEME_TOKENS["dark"]),
-])
-LIGHT_THEME_BG = THEME_TOKENS["light"]["bg"]
-DARK_THEME_BG = THEME_TOKENS["dark"]["bg"]
-
 BASE_LAYOUT = dict(
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
@@ -216,91 +100,53 @@ def apply_base(fig, h=300, legend_h=True):
         )
     return fig
 
-components.html(
-    """
-    <script>
-    (function() {
-      const doc = window.parent.document;
-      const root = doc.documentElement;
-      const lightBg = "__LIGHT_THEME_BG__".toLowerCase();
-      const darkBg = "__DARK_THEME_BG__".toLowerCase();
-
-      const normalizeColor = (value) => {
-        const raw = (value || '').trim().toLowerCase().replace(/\\s+/g, '');
-        if (!raw) return '';
-        if (raw.startsWith('#')) return raw;
-        const rgb = raw.match(/rgba?\\((\\d+),(\\d+),(\\d+)/);
-        if (!rgb) return raw;
-        return '#' + [rgb[1], rgb[2], rgb[3]]
-          .map((v) => Number(v).toString(16).padStart(2, '0'))
-          .join('');
-      };
-
-      const readThemeVar = () => {
-        const nodes = [
-          doc.querySelector('.stApp'),
-          doc.querySelector('[data-testid="stAppViewContainer"]'),
-          doc.body,
-          doc.documentElement,
-        ].filter(Boolean);
-
-        for (const node of nodes) {
-          const styles = window.parent.getComputedStyle(node);
-          const value = styles.getPropertyValue('--background-color');
-          if (value && value.trim()) return value;
-        }
-        return '';
-      };
-
-      const luminanceFromColor = (value) => {
-        const normalized = normalizeColor(value);
-        const hex = normalized.startsWith('#') ? normalized.slice(1) : '';
-        if (hex.length !== 6) return 1;
-        const r = parseInt(hex.slice(0, 2), 16);
-        const g = parseInt(hex.slice(2, 4), 16);
-        const b = parseInt(hex.slice(4, 6), 16);
-        return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-      };
-
-      const detectTheme = () => {
-        const nativeBg = normalizeColor(readThemeVar());
-        if (nativeBg === darkBg) {
-          root.setAttribute('data-app-theme', 'dark');
-          return;
-        }
-        if (nativeBg === lightBg) {
-          root.setAttribute('data-app-theme', 'light');
-          return;
-        }
-        root.setAttribute('data-app-theme', luminanceFromColor(nativeBg) < 0.5 ? 'dark' : 'light');
-      };
-
-      detectTheme();
-      const targets = [
-        doc.querySelector('.stApp'),
-        doc.querySelector('[data-testid="stAppViewContainer"]'),
-        doc.body,
-      ].filter(Boolean);
-      for (const target of targets) {
-        new MutationObserver(detectTheme).observe(target, { attributes: true, attributeFilter: ['class', 'style'] });
-      }
-      window.parent.setTimeout(detectTheme, 50);
-      window.parent.setTimeout(detectTheme, 300);
-      window.parent.setInterval(detectTheme, 1000);
-    })();
-    </script>
-    """.replace("__LIGHT_THEME_BG__", LIGHT_THEME_BG).replace("__DARK_THEME_BG__", DARK_THEME_BG),
-    height=0,
-    width=0,
-)
-
 # ── CSS ────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
-__THEME_CSS__
+.stApp,[data-testid="stAppViewContainer"],[data-testid="stAppViewContainer"]>.main{
+  --bg: var(--background-color, #F6F8FB);
+  --surface: var(--secondary-background-color, #FFFFFF);
+  --surface-alt: color-mix(in srgb, var(--surface) 88%, var(--bg));
+  --text: var(--text-color, #111827);
+  --muted: color-mix(in srgb, var(--text) 68%, var(--bg));
+  --border: color-mix(in srgb, var(--text) 12%, var(--bg));
+  --grid: color-mix(in srgb, var(--text) 10%, var(--bg));
+  --hover-bg: color-mix(in srgb, var(--surface) 82%, var(--bg));
+  --accent: var(--primary-color, #4A7BA8);
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  --accent-border: color-mix(in srgb, var(--accent) 30%, var(--surface));
+  --input-bg: color-mix(in srgb, var(--surface) 92%, var(--bg));
+  --focus-shadow: rgba(123,167,212,.18);
+  --scrollbar: color-mix(in srgb, var(--text) 22%, var(--bg));
+  --hm-100-bg: color-mix(in srgb, #6BBF9E 38%, var(--surface));
+  --hm-100-text: color-mix(in srgb, #2D6A4F 88%, var(--text));
+  --hm-75-bg: color-mix(in srgb, #DDE8B2 50%, var(--surface));
+  --hm-75-text: color-mix(in srgb, #667A1E 84%, var(--text));
+  --hm-50-bg: color-mix(in srgb, #F4E1A6 56%, var(--surface));
+  --hm-50-text: color-mix(in srgb, #A97B12 84%, var(--text));
+  --hm-25-bg: color-mix(in srgb, #EEC39F 52%, var(--surface));
+  --hm-25-text: color-mix(in srgb, #A45724 84%, var(--text));
+  --hm-0-bg: color-mix(in srgb, #D98B8B 44%, var(--surface));
+  --hm-0-text: color-mix(in srgb, #8B2B2B 86%, var(--text));
+  --hm-na-bg: color-mix(in srgb, var(--surface) 85%, var(--bg));
+  --hm-na-text: color-mix(in srgb, var(--text) 44%, var(--bg));
+  --badge-complete-bg: color-mix(in srgb, #6BBF9E 16%, var(--surface));
+  --badge-complete-text: color-mix(in srgb, #3D8B6E 88%, var(--text));
+  --badge-incomplete-bg: color-mix(in srgb, #E8C17A 18%, var(--surface));
+  --badge-incomplete-text: color-mix(in srgb, #C49A3C 88%, var(--text));
+  --badge-none-bg: color-mix(in srgb, #D98B8B 18%, var(--surface));
+  --badge-none-text: color-mix(in srgb, #B05B5B 88%, var(--text));
+  --badge-plan-bg: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  --badge-plan-text: color-mix(in srgb, var(--accent) 84%, var(--text));
+  --ok-bg: color-mix(in srgb, #6BBF9E 14%, var(--surface));
+  --ok-border: color-mix(in srgb, #6BBF9E 36%, var(--surface));
+  --ok-text: color-mix(in srgb, #3D8B6E 82%, var(--text));
+  --shadow-soft: rgba(15,23,42,.08);
+  --shadow-strong: rgba(15,23,42,.16);
+}
 html,body,[class*="css"]{font-family:'Inter',sans-serif!important;color:var(--text)!important;}
-body,.stApp,[data-testid="stAppViewContainer"],[data-testid="stAppViewContainer"]>.main{background:var(--bg)!important;color:var(--text)!important;}
+body,.stApp,[data-testid="stAppViewContainer"],[data-testid="stAppViewContainer"]>.main{background:var(--background-color, #F6F8FB)!important;color:var(--text)!important;}
 .stMarkdown h1,.stMarkdown h2,.stMarkdown h3,.stMarkdown h4,.stMarkdown h5,.stMarkdown h6,.stMarkdown p,.stMarkdown li{color:var(--text)!important;}
 #MainMenu,footer{visibility:hidden;}
 .block-container{padding-top:0!important;max-width:100%!important;padding-left:2rem!important;padding-right:2rem!important;}
@@ -371,7 +217,7 @@ div[data-testid="stDownloadButton"] button{background:var(--accent-soft)!importa
 div[data-testid="stDownloadButton"] button:hover{background:var(--accent)!important;color:#fff!important;}
 ::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--scrollbar);border-radius:3px;}
 </style>
-""".replace("__THEME_CSS__", THEME_CSS), unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 # ── DATA ───────────────────────────────────────────────────────────────────────
 EXCEL_PATH = Path("Plan_de_ensayos_2026.xlsx")
