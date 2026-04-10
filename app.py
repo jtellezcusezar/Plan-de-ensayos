@@ -423,10 +423,31 @@ def control_row_label(row):
 def build_heatmap_rows(df_ctrl, df_ens, area):
     rows = []
     ctrl_filtered = df_ctrl[control_area_mask(df_ctrl, area)].copy()
-    proyectos = sorted(
-        set(ctrl_filtered["Proyecto"].dropna().tolist()) |
-        set(df_ens["Proyecto"].dropna().tolist())
-    )
+    if area == "Producto terminado":
+        proyectos_ens = set()
+        for etapa, material, ensayo in PRODUCTO_TERMINADO_ENSAYOS:
+            mask = (
+                (df_ens["ETAPA"] == etapa) &
+                (df_ens["MATERIAL"] == material) &
+                (df_ens["ENSAYO"] == ensayo)
+            )
+            proyectos_ens.update(df_ens.loc[mask, "Proyecto"].dropna().tolist())
+
+        proyectos_ctrl = set()
+        for area_v, etapa_v, control_v in PRODUCTO_TERMINADO_CONTROLES:
+            mask = (
+                (df_ctrl["Area"] == area_v) &
+                (df_ctrl["Etapa"] == etapa_v) &
+                (df_ctrl["Control"] == control_v)
+            )
+            proyectos_ctrl.update(df_ctrl.loc[mask, "Proyecto"].dropna().tolist())
+
+        proyectos = sorted(proyectos_ens | proyectos_ctrl)
+    else:
+        proyectos = sorted(
+            set(ctrl_filtered["Proyecto"].dropna().tolist()) |
+            set(df_ens["Proyecto"].dropna().tolist())
+        )
 
     for proyecto in proyectos:
         ctrl_proy = ctrl_filtered[ctrl_filtered["Proyecto"] == proyecto]
