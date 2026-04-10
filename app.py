@@ -311,10 +311,6 @@ def render_native_donut_chart(target, data, theta, color, total, title=None,
     color_domain = [estado for estado in COLORS if estado in data[color].tolist()]
     color_range = [COLORS[estado] for estado in color_domain]
     chart_data = data.copy()
-    total_label = pd.DataFrame([{
-        "label": f"{int(total):,}",
-        "subtitle": "Total",
-    }])
     spec = {
         "layer": [
             {
@@ -346,34 +342,6 @@ def render_native_donut_chart(target, data, theta, color, total, title=None,
                         {"field": color, "type": "nominal", "title": "Estado"},
                         {"field": theta, "type": "quantitative", "title": "Total"},
                     ],
-                },
-            },
-            {
-                "data": {"values": total_label.to_dict("records")},
-                "mark": {
-                    "type": "text",
-                    "font": "Inter",
-                    "fontSize": 22,
-                    "fontWeight": 700,
-                },
-                "encoding": {
-                    "text": {"field": "label"},
-                    "x": {"value": 110},
-                    "y": {"value": 100},
-                },
-            },
-            {
-                "data": {"values": total_label.to_dict("records")},
-                "mark": {
-                    "type": "text",
-                    "font": "Inter",
-                    "fontSize": 11,
-                    "opacity": 0.75,
-                },
-                "encoding": {
-                    "text": {"field": "subtitle"},
-                    "x": {"value": 110},
-                    "y": {"value": 120},
                 },
             },
         ],
@@ -663,13 +631,20 @@ with tab1:
         st.markdown('<div class="dash-card">', unsafe_allow_html=True)
         ec = df1["Estado"].value_counts().reset_index()
         ec.columns = ["Estado","n"]
+        donut_info, donut_view = st.columns([0.62, 1.38], vertical_alignment="center")
+        with donut_info:
+            try:
+                st.metric("Total registros", f"{len(df1):,}", border=True)
+            except TypeError:
+                st.metric("Total registros", f"{len(df1):,}")
+            st.caption("Valor nativo, adapta el color al tema activo.")
         render_native_donut_chart(
-            st,
+            donut_view,
             ec,
             theta="n",
             color="Estado",
             total=len(df1),
-            legend="right",
+            legend="bottom",
             height=270,
             use_container_width=True,
         )
