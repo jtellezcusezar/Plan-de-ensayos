@@ -486,6 +486,7 @@ def build_echarts_heatmap_config(rows_data):
         "grid": {"left": 110, "right": 18, "top": 10, "bottom": 20, "containLabel": True},
         "xAxis": {
             "type": "category",
+            "position": "top",
             "data": month_labels,
             "splitArea": {"show": True},
             "axisLabel": {"color": "#6B7280", "fontFamily": "Inter, sans-serif", "fontSize": 11},
@@ -494,6 +495,7 @@ def build_echarts_heatmap_config(rows_data):
         "yAxis": {
             "type": "category",
             "data": y_labels,
+            "inverse": True,
             "splitArea": {"show": True},
             "axisLabel": {"color": "#374151", "fontFamily": "Inter, sans-serif", "fontSize": 11},
             "axisTick": {"show": False},
