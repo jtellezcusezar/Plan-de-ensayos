@@ -58,26 +58,24 @@ PRODUCTO_TERMINADO_CONTROLES = [
     ("Torre", "Producto terminado", "Inspección recepción foso de ascensor"),
 ]
 
-def _rgba(c, alpha):
-    c = str(c).strip().lstrip("#")
-    if len(c) != 6:
-        c = "7BA7D4"
-    r, g, b = tuple(int(c[i:i+2], 16) for i in (0, 2, 4))
-    return f"rgba({r},{g},{b},{alpha})"
-
-
 COLORS = {
-    "Planeado": "#7BA7D4",
-    "Completo": "#6BBF9E",
-    "Incompleto": "#E8C17A",
+    "Planeado":     "#7BA7D4",
+    "Completo":     "#6BBF9E",
+    "Incompleto":   "#E8C17A",
     "No Realizado": "#D98B8B",
 }
 
+# ── PLOTLY LAYOUT BASE ─────────────────────────────────────────────────────────
+# No incluye 'legend' para evitar conflictos al llamar update_layout
 BASE_LAYOUT = dict(
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
-    font=dict(family="Inter, sans-serif", size=12),
+    font=dict(family="Inter, sans-serif", color="#272829", size=12),
     margin=dict(t=40, b=10, l=10, r=10),
+    hoverlabel=dict(
+        bgcolor="#1E293B", font_color="#F1F5F9",
+        font_size=12, bordercolor="#334155",
+    ),
 )
 
 def apply_base(fig, h=300, legend_h=True):
@@ -87,16 +85,12 @@ def apply_base(fig, h=300, legend_h=True):
         plot_bgcolor=BASE_LAYOUT["plot_bgcolor"],
         font=BASE_LAYOUT["font"],
         margin=BASE_LAYOUT["margin"],
+        hoverlabel=BASE_LAYOUT["hoverlabel"],
         height=h,
     )
     if legend_h:
         fig.update_layout(
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                font=dict(size=11),
-            )
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, font=dict(size=11))
         )
     return fig
 
@@ -104,118 +98,72 @@ def apply_base(fig, h=300, legend_h=True):
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
-.stApp,[data-testid="stAppViewContainer"],[data-testid="stAppViewContainer"]>.main{
-  --bg: var(--background-color, #F6F8FB);
-  --surface: var(--secondary-background-color, #FFFFFF);
-  --surface-alt: color-mix(in srgb, var(--surface) 88%, var(--bg));
-  --text: var(--text-color, #111827);
-  --muted: color-mix(in srgb, var(--text) 68%, var(--bg));
-  --border: color-mix(in srgb, var(--text) 12%, var(--bg));
-  --grid: color-mix(in srgb, var(--text) 10%, var(--bg));
-  --hover-bg: color-mix(in srgb, var(--surface) 82%, var(--bg));
-  --accent: var(--primary-color, #4A7BA8);
-  --accent-soft: color-mix(in srgb, var(--accent) 16%, var(--surface));
-  --accent-border: color-mix(in srgb, var(--accent) 30%, var(--surface));
-  --input-bg: color-mix(in srgb, var(--surface) 92%, var(--bg));
-  --focus-shadow: rgba(123,167,212,.18);
-  --scrollbar: color-mix(in srgb, var(--text) 22%, var(--bg));
-  --hm-100-bg: color-mix(in srgb, #6BBF9E 38%, var(--surface));
-  --hm-100-text: color-mix(in srgb, #2D6A4F 88%, var(--text));
-  --hm-75-bg: color-mix(in srgb, #DDE8B2 50%, var(--surface));
-  --hm-75-text: color-mix(in srgb, #667A1E 84%, var(--text));
-  --hm-50-bg: color-mix(in srgb, #F4E1A6 56%, var(--surface));
-  --hm-50-text: color-mix(in srgb, #A97B12 84%, var(--text));
-  --hm-25-bg: color-mix(in srgb, #EEC39F 52%, var(--surface));
-  --hm-25-text: color-mix(in srgb, #A45724 84%, var(--text));
-  --hm-0-bg: color-mix(in srgb, #D98B8B 44%, var(--surface));
-  --hm-0-text: color-mix(in srgb, #8B2B2B 86%, var(--text));
-  --hm-na-bg: color-mix(in srgb, var(--surface) 85%, var(--bg));
-  --hm-na-text: color-mix(in srgb, var(--text) 44%, var(--bg));
-  --badge-complete-bg: color-mix(in srgb, #6BBF9E 16%, var(--surface));
-  --badge-complete-text: color-mix(in srgb, #3D8B6E 88%, var(--text));
-  --badge-incomplete-bg: color-mix(in srgb, #E8C17A 18%, var(--surface));
-  --badge-incomplete-text: color-mix(in srgb, #C49A3C 88%, var(--text));
-  --badge-none-bg: color-mix(in srgb, #D98B8B 18%, var(--surface));
-  --badge-none-text: color-mix(in srgb, #B05B5B 88%, var(--text));
-  --badge-plan-bg: color-mix(in srgb, var(--accent) 14%, var(--surface));
-  --badge-plan-text: color-mix(in srgb, var(--accent) 84%, var(--text));
-  --ok-bg: color-mix(in srgb, #6BBF9E 14%, var(--surface));
-  --ok-border: color-mix(in srgb, #6BBF9E 36%, var(--surface));
-  --ok-text: color-mix(in srgb, #3D8B6E 82%, var(--text));
-  --shadow-soft: rgba(15,23,42,.08);
-  --shadow-strong: rgba(15,23,42,.16);
-}
-html,body,[class*="css"]{font-family:'Inter',sans-serif!important;color:var(--text)!important;}
-body,.stApp,[data-testid="stAppViewContainer"],[data-testid="stAppViewContainer"]>.main{background:var(--background-color, #F6F8FB)!important;color:var(--text)!important;}
-.stMarkdown h1,.stMarkdown h2,.stMarkdown h3,.stMarkdown h4,.stMarkdown h5,.stMarkdown h6,.stMarkdown p,.stMarkdown li{color:var(--text)!important;}
+html,body,[class*="css"]{font-family:'Inter',sans-serif!important;}
 #MainMenu,footer{visibility:hidden;}
 .block-container{padding-top:0!important;max-width:100%!important;padding-left:2rem!important;padding-right:2rem!important;}
 [data-testid="stSidebar"]{display:none;}
-[data-testid="stToolbar"]{background:transparent!important;}
-.app-header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 32px;display:flex;align-items:center;justify-content:space-between;margin:-1rem -2rem 0 -2rem;position:sticky;top:0;z-index:100;box-shadow:0 1px 10px rgba(2,6,23,.10);}
+.app-header{background:#fff;border-bottom:1px solid #E5E9F0;padding:14px 32px;display:flex;align-items:center;justify-content:space-between;margin:-1rem -2rem 0 -2rem;position:sticky;top:0;z-index:100;box-shadow:0 1px 6px rgba(15,23,42,.07);}
 .logo-box{width:36px;height:36px;background:linear-gradient(135deg,#7BA7D4,#4A7BA8);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;}
-.app-title{font-size:16px;font-weight:700;color:var(--text);margin:0;}
-.app-sub{font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin:0;}
-.hdr-badge{background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;border:1px solid var(--accent-border);}
-.hdr-date{font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;}
-.stTabs [data-baseweb="tab-list"]{background:var(--surface);border-bottom:1px solid var(--border);padding:0;gap:0;margin:0 -2rem;padding-left:2rem;}
-.stTabs [data-baseweb="tab"]{font-size:13px!important;font-weight:600!important;color:var(--muted)!important;padding:14px 22px!important;border-bottom:2px solid transparent!important;background:transparent!important;}
-.stTabs [aria-selected="true"]{color:var(--accent)!important;border-bottom-color:var(--accent)!important;}
+.app-title{font-size:16px;font-weight:700;color:#111827;margin:0;}
+.app-sub{font-size:11px;color:#9CA3AF;font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin:0;}
+.hdr-badge{background:#EEF3FA;color:#4A7BA8;font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;}
+.hdr-date{font-size:12px;color:#9CA3AF;font-family:'DM Mono',monospace;}
+.stTabs [data-baseweb="tab-list"]{background:#fff;border-bottom:1px solid #E5E9F0;padding:0;gap:0;margin:0 -2rem;padding-left:2rem;}
+.stTabs [data-baseweb="tab"]{font-size:13px!important;font-weight:600!important;color:#9CA3AF!important;padding:14px 22px!important;border-bottom:2px solid transparent!important;background:transparent!important;}
+.stTabs [aria-selected="true"]{color:#4A7BA8!important;border-bottom-color:#4A7BA8!important;}
 .stTabs [data-baseweb="tab-panel"]{padding-top:24px;}
 .stTabs [data-baseweb="tab-highlight"]{display:none;}
-.stTabs [data-baseweb="tab-border"]{background:var(--border)!important;}
 .filter-bar{margin-bottom:16px;}
 .filter-bar-title{display:none;}
-div[data-testid="stSelectbox"]>label,div[data-testid="stTextInput"]>label{font-size:11px!important;font-weight:600!important;color:var(--muted)!important;text-transform:uppercase!important;letter-spacing:.05em!important;margin-bottom:4px!important;}
-div[data-testid="stSelectbox"]>div>div,div[data-testid="stTextInput"]>div>input,[data-baseweb="select"]>div,[data-baseweb="base-input"]>div{border-radius:10px!important;border:1.5px solid var(--border)!important;background:var(--input-bg)!important;font-size:13px!important;color:var(--text)!important;}
-[data-baseweb="select"] span,[data-baseweb="select"] input,[data-baseweb="base-input"] input,[data-baseweb="select"] *{color:var(--text)!important;}
-[data-baseweb="popover"] *{color:var(--text)!important;}
-[role="listbox"],[role="listbox"] *{background:var(--surface)!important;color:var(--text)!important;}
-div[data-testid="stSelectbox"] svg{fill:var(--muted)!important;}
-div[data-testid="stSelectbox"]>div>div:focus-within,div[data-testid="stTextInput"]>div>input:focus{border-color:var(--accent)!important;box-shadow:0 0 0 3px var(--focus-shadow)!important;}
-.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;position:relative;overflow:hidden;box-shadow:0 1px 4px var(--shadow-soft);transition:transform .15s,box-shadow .15s;}
-.kpi-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px var(--shadow-strong);}
+div[data-testid="stSelectbox"]>label{font-size:11px!important;font-weight:600!important;color:#6B7280!important;text-transform:uppercase!important;letter-spacing:.05em!important;margin-bottom:4px!important;}
+div[data-testid="stSelectbox"]>div>div{border-radius:10px!important;border:1.5px solid #E5E9F0!important;background:#FAFBFC!important;font-size:13px!important;color:#374151!important;}
+div[data-testid="stSelectbox"]>div>div:focus-within{border-color:#7BA7D4!important;box-shadow:0 0 0 3px rgba(123,167,212,.12)!important;}
+div[data-testid="stTextInput"]>label{font-size:11px!important;font-weight:600!important;color:#6B7280!important;text-transform:uppercase!important;letter-spacing:.05em!important;}
+div[data-testid="stTextInput"]>div>input{border-radius:10px!important;border:1.5px solid #E5E9F0!important;background:#FAFBFC!important;font-size:13px!important;color:#374151!important;}
+div[data-testid="stTextInput"]>div>input:focus{border-color:#7BA7D4!important;box-shadow:0 0 0 3px rgba(123,167,212,.12)!important;}
+.kpi-card{background:#fff;border:1px solid #E5E9F0;border-radius:14px;padding:18px 20px;position:relative;overflow:hidden;box-shadow:0 1px 4px rgba(15,23,42,.05);transition:transform .15s,box-shadow .15s;}
+.kpi-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(15,23,42,.08);}
 .kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:14px 14px 0 0;}
 .kp-blue::before{background:#7BA7D4;}.kp-green::before{background:#6BBF9E;}.kp-yellow::before{background:#E8C17A;}.kp-red::before{background:#D98B8B;}.kp-slate::before{background:linear-gradient(90deg,#7BA7D4,#6BBF9E);}
-.kpi-icon{font-size:20px;margin-bottom:8px;}.kpi-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
-.kpi-value{font-size:28px;font-weight:800;line-height:1;font-family:'DM Mono',monospace;margin-bottom:4px;}.kpi-sub{font-size:11px;color:var(--muted);}
-.kp-blue .kpi-value{color:#4A7BA8;}.kp-green .kpi-value{color:#3D8B6E;}.kp-yellow .kpi-value{color:#C49A3C;}.kp-red .kpi-value{color:#B05B5B;}.kp-slate .kpi-value{color:var(--accent);}
-.section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:0 0 10px 0;padding-bottom:8px;border-bottom:1px solid var(--border);}
-.section-title{font-size:15px;font-weight:700;color:var(--text);line-height:1.2;margin:0;}
-.section-sub{font-size:11px;color:var(--muted);line-height:1.4;text-align:right;max-width:60%;margin:0;}
+.kpi-icon{font-size:20px;margin-bottom:8px;}.kpi-label{font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
+.kpi-value{font-size:28px;font-weight:800;line-height:1;font-family:'DM Mono',monospace;margin-bottom:4px;}.kpi-sub{font-size:11px;color:#9CA3AF;}
+.kp-blue .kpi-value{color:#4A7BA8;}.kp-green .kpi-value{color:#3D8B6E;}.kp-yellow .kpi-value{color:#C49A3C;}.kp-red .kpi-value{color:#B05B5B;}.kp-slate .kpi-value{color:#4A7BA8;}
+.section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:0 0 10px 0;padding-bottom:8px;border-bottom:1px solid #E5E9F0;}
+.section-title{font-size:15px;font-weight:700;color:#111827;line-height:1.2;margin:0;}
+.section-sub{font-size:11px;color:#9CA3AF;line-height:1.4;text-align:right;max-width:60%;margin:0;}
 .dash-card{background:transparent;border:none;border-radius:0;padding:0;margin-bottom:18px;box-shadow:none;}
-.card-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px;}.card-sub{font-size:11px;color:var(--muted);margin-bottom:14px;}
-.info-note{padding:9px 14px;background:var(--accent-soft);border:1px solid var(--accent-border);border-radius:10px;font-size:12px;color:var(--accent);font-weight:500;margin-bottom:18px;}
-.ok-note{padding:9px 14px;background:var(--ok-bg);border:1px solid var(--ok-border);border-radius:10px;font-size:12px;color:var(--ok-text);font-weight:500;}
+.card-title{font-size:14px;font-weight:700;color:#111827;margin-bottom:2px;}.card-sub{font-size:11px;color:#9CA3AF;margin-bottom:14px;}
+.info-note{padding:9px 14px;background:#EEF3FA;border:1px solid #C8DCF0;border-radius:10px;font-size:12px;color:#4A7BA8;font-weight:500;margin-bottom:18px;}
+.ok-note{padding:9px 14px;background:#E4F4EE;border:1px solid #A8D5BF;border-radius:10px;font-size:12px;color:#3D8B6E;font-weight:500;}
 .sem-grid{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;}
-.sem-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;min-width:160px;position:relative;overflow:hidden;box-shadow:0 1px 4px var(--shadow-soft);transition:transform .15s;}
+.sem-card{background:#fff;border:1px solid #E5E9F0;border-radius:12px;padding:14px 18px;min-width:160px;position:relative;overflow:hidden;box-shadow:0 1px 4px rgba(15,23,42,.05);transition:transform .15s;}
 .sem-card:hover{transform:translateY(-1px);}
 .sem-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;border-radius:0 0 12px 12px;}
 .sv::after{background:#6BBF9E;}.sa::after{background:#E8C17A;}.sr::after{background:#D98B8B;}
 .sem-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;}
-.sem-name{font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;}
+.sem-name{font-size:12px;font-weight:700;color:#111827;margin-bottom:6px;display:flex;align-items:center;}
 .sem-tasa{font-size:22px;font-weight:800;font-family:'DM Mono',monospace;}
 .sv .sem-tasa{color:#3D8B6E;}.sa .sem-tasa{color:#C49A3C;}.sr .sem-tasa{color:#B05B5B;}
-.sem-detail{font-size:11px;color:var(--muted);margin-top:3px;}
-.hm-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border);}
+.sem-detail{font-size:11px;color:#9CA3AF;margin-top:3px;}
+.hm-wrap{overflow-x:auto;border-radius:10px;border:1px solid #E5E9F0;}
 .hm-table{width:100%;border-collapse:collapse;font-size:12px;}
-.hm-table th{background:var(--surface-alt);padding:9px 8px;text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap;}
+.hm-table th{background:#F8F9FB;padding:9px 8px;text-align:center;font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;border-bottom:1px solid #E5E9F0;white-space:nowrap;}
 .hm-table th.hmp{text-align:left;min-width:160px;padding-left:16px;}
-.hm-table td{padding:8px;text-align:center;font-weight:700;font-family:'DM Mono',monospace;border-bottom:1px solid var(--grid);}
-.hm-table td.hmpn{text-align:left;font-family:'Inter',sans-serif;font-size:12px;padding-left:16px;color:var(--text);font-weight:600;}
-.hm-table tr:last-child td{border-bottom:none;}.hm-table tr:hover td{filter:brightness(1.03);}
-.h100{background:var(--hm-100-bg);color:var(--hm-100-text);}.h75{background:var(--hm-75-bg);color:var(--hm-75-text);}.h50{background:var(--hm-50-bg);color:var(--hm-50-text);}.h25{background:var(--hm-25-bg);color:var(--hm-25-text);}.h0{background:var(--hm-0-bg);color:var(--hm-0-text);}.hna{background:var(--hm-na-bg);color:var(--hm-na-text);font-family:'Inter',sans-serif;font-weight:500;font-size:11px;}
+.hm-table td{padding:8px;text-align:center;font-weight:700;font-family:'DM Mono',monospace;border-bottom:1px solid #F3F4F6;}
+.hm-table td.hmpn{text-align:left;font-family:'Inter',sans-serif;font-size:12px;padding-left:16px;color:#111827;font-weight:600;}
+.hm-table tr:last-child td{border-bottom:none;}.hm-table tr:hover td{filter:brightness(.97);}
+.h100{background:#B8E4D0;color:#2D6A4F;}.h75{background:#DDE8B2;color:#667A1E;}.h50{background:#F4E1A6;color:#A97B12;}.h25{background:#EEC39F;color:#A45724;}.h0{background:#F0C8C8;color:#8B2B2B;}.hna{background:#F8F9FB;color:#C4CAD4;font-family:'Inter',sans-serif;font-weight:500;font-size:11px;}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
-.bc{background:var(--badge-complete-bg);color:var(--badge-complete-text);}.bi{background:var(--badge-incomplete-bg);color:var(--badge-incomplete-text);}.bn{background:var(--badge-none-bg);color:var(--badge-none-text);}.bp{background:var(--badge-plan-bg);color:var(--badge-plan-text);}
+.bc{background:#E4F4EE;color:#3D8B6E;}.bi{background:#FBF3E0;color:#C49A3C;}.bn{background:#F8E8E8;color:#B05B5B;}.bp{background:#EEF3FA;color:#4A7BA8;}
 .rt{width:100%;border-collapse:collapse;font-size:13px;}
-.rt th{background:var(--surface-alt);padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);white-space:nowrap;}
-.rt td{padding:10px 14px;border-bottom:1px solid var(--grid);color:var(--muted);}
-.rt td:first-child{color:var(--text);font-weight:600;}.rt tr:last-child td{border-bottom:none;}.rt tr:hover td{background:var(--hover-bg);}
+.rt th{background:#F8F9FB;padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #E5E9F0;white-space:nowrap;}
+.rt td{padding:10px 14px;border-bottom:1px solid #F3F4F6;color:#6B7280;}
+.rt td:first-child{color:#111827;font-weight:600;}.rt tr:last-child td{border-bottom:none;}.rt tr:hover td{background:#FAFBFC;}
 .hml{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
 .hml span{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;}
-div[data-testid="stDownloadButton"] button{background:var(--accent-soft)!important;color:var(--accent)!important;border:1.5px solid var(--accent-border)!important;border-radius:8px!important;font-size:12px!important;font-weight:600!important;padding:6px 14px!important;}
-div[data-testid="stDownloadButton"] button:hover{background:var(--accent)!important;color:#fff!important;}
-::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--scrollbar);border-radius:3px;}
+div[data-testid="stDownloadButton"] button{background:#EEF3FA!important;color:#4A7BA8!important;border:1.5px solid #C8DCF0!important;border-radius:8px!important;font-size:12px!important;font-weight:600!important;padding:6px 14px!important;}
+div[data-testid="stDownloadButton"] button:hover{background:#7BA7D4!important;color:#fff!important;}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:#E5E9F0;border-radius:3px;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -336,6 +284,21 @@ def kpi(icon, label, value, sub, css):
             f'<div class="kpi-label">{label}</div><div class="kpi-value">{value}</div>'
             f'<div class="kpi-sub">{sub}</div></div>')
 
+
+def render_kpi(col, icon, label, value, sub="", accent="#7BA7D4"):
+    with col.container(border=True):
+        st.markdown(
+            f"<div style='height:4px;background:{accent};border-radius:999px;"
+            f"margin:-0.55rem -0.55rem 0.75rem -0.55rem;'></div>",
+            unsafe_allow_html=True,
+        )
+        try:
+            st.metric(f"{icon} {label}", value, border=False)
+        except TypeError:
+            st.metric(f"{icon} {label}", value)
+        if sub:
+            st.caption(sub)
+
 def section_header(title, subtitle=""):
     subtitle_html = f'<div class="section-sub">{subtitle}</div>' if subtitle else ""
     return (
@@ -372,13 +335,13 @@ def hm_cls(t):
 
 def heatmap_legend():
     return f"""<div class="hml">
-      <span style="background:var(--hm-100-bg);color:var(--hm-100-text);">≥ 90%</span>
-      <span style="background:var(--hm-75-bg);color:var(--hm-75-text);">70–89%</span>
-      <span style="background:var(--hm-50-bg);color:var(--hm-50-text);">50–69%</span>
-      <span style="background:var(--hm-25-bg);color:var(--hm-25-text);">25–49%</span>
-      <span style="background:var(--hm-0-bg);color:var(--hm-0-text);">&lt; 25%</span>
-      <span style="background:var(--hm-na-bg);color:var(--hm-na-text);">Sin datos</span>
-      <span style="font-size:11px;color:var(--muted);margin-left:4px;">· Meta: {META}%</span>
+      <span style="background:#B8E4D0;color:#2D6A4F;">≥ 90%</span>
+      <span style="background:#DDE8B2;color:#667A1E;">70–89%</span>
+      <span style="background:#F4E1A6;color:#A97B12;">50–69%</span>
+      <span style="background:#EEC39F;color:#A45724;">25–49%</span>
+      <span style="background:#F0C8C8;color:#8B2B2B;">&lt; 25%</span>
+      <span style="background:#F8F9FB;color:#9CA3AF;">Sin datos</span>
+      <span style="font-size:11px;color:#9CA3AF;margin-left:4px;">· Meta: {META}%</span>
     </div>"""
 
 def render_heatmap_table(first_col_label, rows_data):
@@ -438,7 +401,7 @@ def badge(estado):
 
 def sem_card(name, tasa, ej, crit):
     cls = "sv" if tasa >= META else "sa" if tasa >= META * 0.6 else "sr"
-    dot = COLORS["Completo"] if tasa >= META else COLORS["Incompleto"] if tasa >= META * 0.6 else COLORS["No Realizado"]
+    dot = "#6BBF9E" if tasa >= META else "#E8C17A" if tasa >= META * 0.6 else "#D98B8B"
     return (f'<div class="sem-card {cls}"><div class="sem-name">'
             f'<span class="sem-dot" style="background:{dot}"></span>{name}</div>'
             f'<div class="sem-tasa">{tasa:.1f}%</div>'
@@ -556,7 +519,6 @@ def build_heatmap_rows(df_ctrl, df_ens, area):
 
 # ── HEADER ─────────────────────────────────────────────────────────────────────
 st.markdown(f"""
-<div style="height:28px"></div>
 <div class="app-header">
   <div style="display:flex;align-items:center;gap:12px;">
     <div class="logo-box">🏗️</div>
@@ -596,11 +558,11 @@ with tab1:
 
     comp, inc, no_r, plan, pend, tot, tasa = get_kpis(df1)
     k1, k2, k3, k4, k5 = st.columns(5)
-    k1.markdown(kpi("📋","Planeados",         f"{plan:,}", f"Pendientes: {pend:,}",                              "kp-blue"),   unsafe_allow_html=True)
-    k2.markdown(kpi("✅","Completos",         f"{comp:,}", f"{comp/tot*100:.1f}% del ejecutable" if tot else "—","kp-green"),  unsafe_allow_html=True)
-    k3.markdown(kpi("⚠️","Incompletos",       f"{inc:,}",  f"{inc/tot*100:.1f}% del ejecutable"  if tot else "—","kp-yellow"), unsafe_allow_html=True)
-    k4.markdown(kpi("❌","No Realizados",     f"{no_r:,}", f"{no_r/tot*100:.1f}% del ejecutable" if tot else "—","kp-red"),    unsafe_allow_html=True)
-    k5.markdown(kpi("📈","Tasa Cumplimiento", f"{tasa}%",  f"Meta: ≥ {META}%",                                  "kp-slate"),  unsafe_allow_html=True)
+    render_kpi(k1, "📋", "Planeados", f"{plan:,}", f"Pendientes: {pend:,}", "#7BA7D4")
+    render_kpi(k2, "✅", "Completos", f"{comp:,}", f"{comp/tot*100:.1f}% del ejecutable" if tot else "—", "#6BBF9E")
+    render_kpi(k3, "⚠️", "Incompletos", f"{inc:,}", f"{inc/tot*100:.1f}% del ejecutable" if tot else "—", "#E8C17A")
+    render_kpi(k4, "❌", "No Realizados", f"{no_r:,}", f"{no_r/tot*100:.1f}% del ejecutable" if tot else "—", "#D98B8B")
+    render_kpi(k5, "📈", "Tasa Cumplimiento", f"{tasa}%", f"Meta: ≥ {META}%", "#4A7BA8")
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     # ── Donut ──
@@ -625,9 +587,9 @@ with tab1:
             showlegend=True,
             legend=dict(orientation="v", x=1.02, y=0.5, font=dict(size=12)),
             annotations=[dict(text=f"<b>{len(df1):,}</b>", x=0.5, y=0.5,
-                              font_size=16, showarrow=False)],
+                              font_size=16, showarrow=False, font_color="#111827")],
         )
-        st.plotly_chart(fig_donut, use_container_width=True, theme="streamlit", config={"displayModeBar": False})
+        st.plotly_chart(fig_donut, use_container_width=True, config={"displayModeBar": False})
         st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Barras por proyecto ──
@@ -649,9 +611,9 @@ with tab1:
             fig_proy.update_traces(hovertemplate="<b>%{y}</b><br>%{data.name}: %{x}<extra></extra>",
                                    marker_line_width=0)
             apply_base(fig_proy, h=270)
-            fig_proy.update_layout(xaxis=dict(title=""),
+            fig_proy.update_layout(xaxis=dict(title="", gridcolor="#F3F4F6"),
                                    yaxis=dict(title="", gridwidth=0))
-            st.plotly_chart(fig_proy, use_container_width=True, theme="streamlit", config={"displayModeBar": False})
+            st.plotly_chart(fig_proy, use_container_width=True, config={"displayModeBar": False})
         st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Línea temporal ──
@@ -668,12 +630,7 @@ with tab1:
         marker=dict(size=6),
         hovertemplate="<b>%{x}</b><br>Plan del mes: %{y}<extra></extra>",
     ))
-    fill_map_line = {
-        "Completo": _rgba(COLORS["Completo"], 0.18),
-        "Incompleto": None,
-        "No Realizado": None,
-    }
-    for est, fc in [("Completo", fill_map_line["Completo"]), ("Incompleto", fill_map_line["Incompleto"]), ("No Realizado", fill_map_line["No Realizado"])]:
+    for est, fc in [("Completo","rgba(107,191,158,.15)"), ("Incompleto",None), ("No Realizado",None)]:
         sub = (df1[df1["EsEjecutado"] & (df1["Estado"]==est)]
                  .groupby("Mes").size()
                  .reindex(meses_con_datos, fill_value=0).reset_index())
@@ -687,8 +644,8 @@ with tab1:
             hovertemplate=f"<b>%{{x}}</b><br>{est}: %{{y}}<extra></extra>",
         ))
     apply_base(fig_line, h=295)
-    fig_line.update_layout(xaxis=dict(), yaxis=dict())
-    st.plotly_chart(fig_line, use_container_width=True, theme="streamlit", config={"displayModeBar": False})
+    fig_line.update_layout(xaxis=dict(gridcolor="#F3F4F6"), yaxis=dict(gridcolor="#F3F4F6"))
+    st.plotly_chart(fig_line, use_container_width=True, config={"displayModeBar": False})
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -753,20 +710,21 @@ with tab2:
             marker_line_width=0,
             text=t_df["tasa"].map(lambda t: f"{t:.1f}%"),
             textposition="outside",
-            textfont=dict(size=11),
+            textfont=dict(size=11, color="#6B7280"),
             customdata=t_df[["comp", "inc", "no_r", "tot"]].values,
             hovertemplate="<b>%{y}</b><br>Cumplimiento: %{x:.1f}%<br>Completos: %{customdata[0]}<br>Incompletos: %{customdata[1]}<br>No realizados: %{customdata[2]}<br>Total plan meses vencidos: %{customdata[3]}<extra></extra>",
         ))
-        fig_tasa.add_vline(x=META, line_dash="dot", line_color=COLORS["Planeado"], line_width=1.5,
+        fig_tasa.add_vline(x=META, line_dash="dot", line_color="#7BA7D4", line_width=1.5,
                            annotation_text=f"Meta {META}%",
+                           annotation_font_color="#7BA7D4", annotation_font_size=10,
                            annotation_position="top right")
         apply_base(fig_tasa, h=340, legend_h=False)
         fig_tasa.update_layout(
             showlegend=False,
-            xaxis=dict(range=[0,115], ticksuffix="%", title=""),
+            xaxis=dict(range=[0,115], gridcolor="#F3F4F6", ticksuffix="%", title=""),
             yaxis=dict(gridwidth=0, title=""),
         )
-        st.plotly_chart(fig_tasa, use_container_width=True, theme="streamlit", config={"displayModeBar": False})
+        st.plotly_chart(fig_tasa, use_container_width=True, config={"displayModeBar": False})
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -815,14 +773,9 @@ with tab3:
         for c_ in ["Completo","Incompleto","No Realizado"]:
             adf[f"{c_}_ac"] = adf[c_].cumsum()
         fig_area = go.Figure()
-        fill_map_area = {
-            "Completo": _rgba(COLORS["Completo"], 0.18),
-            "Incompleto": _rgba(COLORS["Incompleto"], 0.14),
-            "No Realizado": _rgba(COLORS["No Realizado"], 0.12),
-        }
-        for est, fc in [("Completo", fill_map_area["Completo"]),
-                         ("Incompleto", fill_map_area["Incompleto"]),
-                         ("No Realizado", fill_map_area["No Realizado"])]:
+        for est, fc in [("Completo","rgba(107,191,158,.15)"),
+                         ("Incompleto","rgba(232,193,122,.12)"),
+                         ("No Realizado","rgba(217,139,139,.10)")]:
             fig_area.add_trace(go.Scatter(
                 x=adf["Mes"], y=adf[f"{est}_ac"],
                 name=f"{est} (acum.)", mode="lines+markers",
@@ -832,8 +785,8 @@ with tab3:
                 hovertemplate=f"<b>%{{x}}</b><br>{est} acum.: %{{y}}<extra></extra>",
             ))
         apply_base(fig_area, h=300)
-        fig_area.update_layout(xaxis=dict(), yaxis=dict())
-        st.plotly_chart(fig_area, use_container_width=True, theme="streamlit", config={"displayModeBar": False})
+        fig_area.update_layout(xaxis=dict(gridcolor="#F3F4F6"), yaxis=dict(gridcolor="#F3F4F6"))
+        st.plotly_chart(fig_area, use_container_width=True, config={"displayModeBar": False})
     st.markdown('</div>', unsafe_allow_html=True)
 
     # Tabla críticos
@@ -854,7 +807,7 @@ with tab3:
             f"<td>{r.Ensayo}</td><td>{r.NTC}</td><td>{r.Mes}</td><td>{badge(r.Estado)}</td></tr>"
             for _, r in crit_df.iterrows())
         st.markdown(
-            f'<div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border);">'
+            f'<div style="overflow-x:auto;border-radius:10px;border:1px solid #E5E9F0;">'
             f'<table class="rt"><thead><tr><th>Proyecto</th><th>Etapa</th><th>Material</th>'
             f'<th>Ensayo</th><th>NTC</th><th>Mes</th><th>Estado</th></tr></thead>'
             f'<tbody>{rows_t}</tbody></table></div>',
@@ -898,11 +851,11 @@ with tab4:
 
     comp4, inc4, no4, plan4, pend4, tot4, tasa4 = get_kpis(df4)
     a, b, c_, d, e = st.columns(5)
-    a.markdown(kpi("🔍","Resultados",    f"{len(df4):,}", "registros","kp-slate"),  unsafe_allow_html=True)
-    b.markdown(kpi("📋","Planeados",     f"{plan4:,}",    f"Pendientes: {pend4:,}", "kp-blue"),   unsafe_allow_html=True)
-    c_.markdown(kpi("✅","Completos",    f"{comp4:,}",    "",          "kp-green"),  unsafe_allow_html=True)
-    d.markdown(kpi("⚠️","Incompletos",   f"{inc4:,}",     "",          "kp-yellow"), unsafe_allow_html=True)
-    e.markdown(kpi("❌","No Realizados", f"{no4:,}",      "",          "kp-red"),    unsafe_allow_html=True)
+    render_kpi(a, "🔍", "Resultados", f"{len(df4):,}", "registros", "#4A7BA8")
+    render_kpi(b, "📋", "Planeados", f"{plan4:,}", f"Pendientes: {pend4:,}", "#7BA7D4")
+    render_kpi(c_, "✅", "Completos", f"{comp4:,}", "", "#6BBF9E")
+    render_kpi(d, "⚠️", "Incompletos", f"{inc4:,}", "", "#E8C17A")
+    render_kpi(e, "❌", "No Realizados", f"{no4:,}", "", "#D98B8B")
 
     st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
     st.markdown(section_header("Resultados de la Consulta"), unsafe_allow_html=True)
@@ -920,12 +873,12 @@ with tab4:
         rows4 = "".join(
             f"<tr><td>{r.Proyecto}</td><td>{r.Etapa}</td><td>{r.Material}</td>"
             f"<td>{r.Ensayo}</td><td>{r.NTC}</td>"
-            f"<td style='max-width:180px;white-space:normal;font-size:11px;color:var(--muted)'>{r.Frecuencia}</td>"
+            f"<td style='max-width:180px;white-space:normal;font-size:11px;color:#9CA3AF'>{r.Frecuencia}</td>"
             f"<td>{r.Mes}</td><td>{badge(r.Estado)}</td></tr>"
             for _, r in prev.iterrows())
         st.markdown(f'<div class="card-sub">Mostrando {min(50,len(disp))} de {len(disp):,} registros.</div>', unsafe_allow_html=True)
         st.markdown(
-            f'<div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border);max-height:480px;overflow-y:auto;">'
+            f'<div style="overflow-x:auto;border-radius:10px;border:1px solid #E5E9F0;max-height:480px;overflow-y:auto;">'
             f'<table class="rt"><thead><tr><th>Proyecto</th><th>Etapa</th><th>Material</th>'
             f'<th>Ensayo</th><th>NTC</th><th>Frecuencia</th><th>Mes</th><th>Estado</th></tr></thead>'
             f'<tbody>{rows4}</tbody></table></div>',
