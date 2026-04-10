@@ -65,127 +65,18 @@ COLORS = {
     "No Realizado": "#D98B8B",
 }
 
-THEMES = {
-    "Claro": {
-        "bg": "#F6F8FB",
-        "surface": "#FFFFFF",
-        "surface_soft": "#FAFBFC",
-        "surface_alt": "#F8F9FB",
-        "text": "#111827",
-        "muted": "#8B95A7",
-        "border": "#E5E9F0",
-        "border_soft": "#F1F5F9",
-        "accent": "#4A7BA8",
-        "accent_soft": "#EEF3FA",
-        "accent_border": "#C8DCF0",
-        "header_shadow": "0 1px 6px rgba(15,23,42,.07)",
-        "card_shadow": "0 1px 4px rgba(15,23,42,.05)",
-        "card_shadow_hover": "0 6px 20px rgba(15,23,42,.08)",
-        "input_bg": "#FAFBFC",
-        "input_text": "#374151",
-        "focus_shadow": "0 0 0 3px rgba(123,167,212,.12)",
-        "info_bg": "#EEF3FA",
-        "info_border": "#C8DCF0",
-        "info_text": "#4A7BA8",
-        "ok_bg": "#E4F4EE",
-        "ok_border": "#A8D5BF",
-        "ok_text": "#3D8B6E",
-        "grid": "#F3F4F6",
-        "hover_bg": "#FAFBFC",
-        "scrollbar": "#D5DCE6",
-        "plotly_hover_bg": "#1E293B",
-        "plotly_hover_text": "#F1F5F9",
-        "plotly_hover_border": "#334155",
-        "hm_100_bg": "#B8E4D0",
-        "hm_100_text": "#2D6A4F",
-        "hm_75_bg": "#DDE8B2",
-        "hm_75_text": "#667A1E",
-        "hm_50_bg": "#F4E1A6",
-        "hm_50_text": "#A97B12",
-        "hm_25_bg": "#EEC39F",
-        "hm_25_text": "#A45724",
-        "hm_0_bg": "#F0C8C8",
-        "hm_0_text": "#8B2B2B",
-        "hm_na_bg": "#F8F9FB",
-        "hm_na_text": "#C4CAD4",
-        "badge_complete_bg": "#E4F4EE",
-        "badge_complete_text": "#3D8B6E",
-        "badge_incomplete_bg": "#FBF3E0",
-        "badge_incomplete_text": "#C49A3C",
-        "badge_none_bg": "#F8E8E8",
-        "badge_none_text": "#B05B5B",
-        "badge_plan_bg": "#EEF3FA",
-        "badge_plan_text": "#4A7BA8",
-    },
-    "Oscuro": {
-        "bg": "#0F172A",
-        "surface": "#111827",
-        "surface_soft": "#172033",
-        "surface_alt": "#1A2438",
-        "text": "#E5ECF6",
-        "muted": "#94A3B8",
-        "border": "#243041",
-        "border_soft": "#1E293B",
-        "accent": "#7BA7D4",
-        "accent_soft": "#162235",
-        "accent_border": "#294462",
-        "header_shadow": "0 1px 10px rgba(2,6,23,.45)",
-        "card_shadow": "0 1px 4px rgba(2,6,23,.35)",
-        "card_shadow_hover": "0 8px 24px rgba(2,6,23,.5)",
-        "input_bg": "#162033",
-        "input_text": "#E5ECF6",
-        "focus_shadow": "0 0 0 3px rgba(123,167,212,.18)",
-        "info_bg": "#162235",
-        "info_border": "#294462",
-        "info_text": "#B7D1EA",
-        "ok_bg": "#10261D",
-        "ok_border": "#1E5A43",
-        "ok_text": "#84D2AE",
-        "grid": "#223047",
-        "hover_bg": "#162033",
-        "scrollbar": "#334155",
-        "plotly_hover_bg": "#E5ECF6",
-        "plotly_hover_text": "#0F172A",
-        "plotly_hover_border": "#94A3B8",
-        "hm_100_bg": "#174C3C",
-        "hm_100_text": "#D7F7E8",
-        "hm_75_bg": "#495B16",
-        "hm_75_text": "#F0F7CF",
-        "hm_50_bg": "#725A15",
-        "hm_50_text": "#FFF1C4",
-        "hm_25_bg": "#7A421C",
-        "hm_25_text": "#FFDCC7",
-        "hm_0_bg": "#6B2525",
-        "hm_0_text": "#FFD5D5",
-        "hm_na_bg": "#182234",
-        "hm_na_text": "#7C8CA3",
-        "badge_complete_bg": "#143126",
-        "badge_complete_text": "#9AE6C1",
-        "badge_incomplete_bg": "#3B2F15",
-        "badge_incomplete_text": "#F3D381",
-        "badge_none_bg": "#3B1D20",
-        "badge_none_text": "#F0A7AE",
-        "badge_plan_bg": "#17273B",
-        "badge_plan_text": "#A9C6E5",
-    },
-}
-
-theme_base = (st.get_option("theme.base") or "light").lower()
-theme_mode = "Oscuro" if theme_base == "dark" else "Claro"
-THEME = THEMES[theme_mode]
-
 
 def get_plotly_layout():
     return dict(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="Inter, sans-serif", color=THEME["text"], size=12),
+        font=dict(family="Inter, sans-serif", color="var(--text-color)", size=12),
         margin=dict(t=40, b=10, l=10, r=10),
         hoverlabel=dict(
-            bgcolor=THEME["plotly_hover_bg"],
-            font_color=THEME["plotly_hover_text"],
+            bgcolor="var(--plotly-hover-bg)",
+            font_color="var(--plotly-hover-text)",
             font_size=12,
-            bordercolor=THEME["plotly_hover_border"],
+            bordercolor="var(--plotly-hover-border)",
         ),
     )
 
@@ -206,18 +97,64 @@ def apply_base(fig, h=300, legend_h=True):
                 orientation="h",
                 yanchor="bottom",
                 y=1.02,
-                font=dict(size=11, color=THEME["text"]),
+                font=dict(size=11, color="var(--text-color)"),
             )
         )
     return fig
 
 # ── CSS ────────────────────────────────────────────────────────────────────────
-theme_vars = "\n".join(f"  --{k.replace('_', '-')}: {v};" for k, v in THEME.items())
-st.markdown(f"""
+st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
 :root {{
-{theme_vars}
+  --bg: var(--background-color, #F6F8FB);
+  --surface: var(--secondary-background-color, #FFFFFF);
+  --surface-soft: var(--secondary-background-color, #FAFBFC);
+  --surface-alt: color-mix(in srgb, var(--secondary-background-color, #FFFFFF) 88%, var(--background-color, #F6F8FB));
+  --text: var(--text-color, #111827);
+  --muted: color-mix(in srgb, var(--text-color, #111827) 56%, transparent);
+  --border: color-mix(in srgb, var(--text-color, #111827) 10%, var(--background-color, #F6F8FB));
+  --accent: var(--primary-color, #4A7BA8);
+  --accent-soft: color-mix(in srgb, var(--primary-color, #4A7BA8) 16%, var(--secondary-background-color, #FFFFFF));
+  --accent-border: color-mix(in srgb, var(--primary-color, #4A7BA8) 32%, var(--secondary-background-color, #FFFFFF));
+  --header-shadow: 0 1px 10px color-mix(in srgb, var(--background-color, #F6F8FB) 35%, #000000);
+  --card-shadow: 0 1px 4px color-mix(in srgb, var(--background-color, #F6F8FB) 30%, #000000);
+  --card-shadow-hover: 0 8px 24px color-mix(in srgb, var(--background-color, #F6F8FB) 40%, #000000);
+  --input-bg: color-mix(in srgb, var(--secondary-background-color, #FFFFFF) 92%, var(--background-color, #F6F8FB));
+  --input-text: var(--text-color, #111827);
+  --focus-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color, #4A7BA8) 18%, transparent);
+  --info-bg: color-mix(in srgb, var(--primary-color, #4A7BA8) 12%, var(--secondary-background-color, #FFFFFF));
+  --info-border: color-mix(in srgb, var(--primary-color, #4A7BA8) 30%, var(--secondary-background-color, #FFFFFF));
+  --info-text: color-mix(in srgb, var(--primary-color, #4A7BA8) 78%, var(--text-color, #111827));
+  --ok-bg: color-mix(in srgb, #6BBF9E 14%, var(--secondary-background-color, #FFFFFF));
+  --ok-border: color-mix(in srgb, #6BBF9E 36%, var(--secondary-background-color, #FFFFFF));
+  --ok-text: color-mix(in srgb, #3D8B6E 82%, var(--text-color, #111827));
+  --grid: color-mix(in srgb, var(--text-color, #111827) 8%, var(--background-color, #F6F8FB));
+  --hover-bg: color-mix(in srgb, var(--secondary-background-color, #FFFFFF) 90%, var(--background-color, #F6F8FB));
+  --scrollbar: color-mix(in srgb, var(--text-color, #111827) 18%, transparent);
+  --plotly-hover-bg: color-mix(in srgb, var(--text-color, #111827) 86%, var(--background-color, #F6F8FB));
+  --plotly-hover-text: var(--background-color, #F6F8FB);
+  --plotly-hover-border: color-mix(in srgb, var(--text-color, #111827) 45%, transparent);
+  --hm-100-bg: color-mix(in srgb, #6BBF9E 38%, var(--secondary-background-color, #FFFFFF));
+  --hm-100-text: color-mix(in srgb, #2D6A4F 88%, var(--text-color, #111827));
+  --hm-75-bg: color-mix(in srgb, #DDE8B2 50%, var(--secondary-background-color, #FFFFFF));
+  --hm-75-text: color-mix(in srgb, #667A1E 86%, var(--text-color, #111827));
+  --hm-50-bg: color-mix(in srgb, #F4E1A6 56%, var(--secondary-background-color, #FFFFFF));
+  --hm-50-text: color-mix(in srgb, #A97B12 86%, var(--text-color, #111827));
+  --hm-25-bg: color-mix(in srgb, #EEC39F 52%, var(--secondary-background-color, #FFFFFF));
+  --hm-25-text: color-mix(in srgb, #A45724 86%, var(--text-color, #111827));
+  --hm-0-bg: color-mix(in srgb, #D98B8B 44%, var(--secondary-background-color, #FFFFFF));
+  --hm-0-text: color-mix(in srgb, #8B2B2B 88%, var(--text-color, #111827));
+  --hm-na-bg: color-mix(in srgb, var(--secondary-background-color, #FFFFFF) 85%, var(--background-color, #F6F8FB));
+  --hm-na-text: color-mix(in srgb, var(--text-color, #111827) 36%, transparent);
+  --badge-complete-bg: color-mix(in srgb, #6BBF9E 16%, var(--secondary-background-color, #FFFFFF));
+  --badge-complete-text: color-mix(in srgb, #3D8B6E 88%, var(--text-color, #111827));
+  --badge-incomplete-bg: color-mix(in srgb, #E8C17A 18%, var(--secondary-background-color, #FFFFFF));
+  --badge-incomplete-text: color-mix(in srgb, #C49A3C 88%, var(--text-color, #111827));
+  --badge-none-bg: color-mix(in srgb, #D98B8B 18%, var(--secondary-background-color, #FFFFFF));
+  --badge-none-text: color-mix(in srgb, #B05B5B 88%, var(--text-color, #111827));
+  --badge-plan-bg: color-mix(in srgb, var(--primary-color, #4A7BA8) 14%, var(--secondary-background-color, #FFFFFF));
+  --badge-plan-text: color-mix(in srgb, var(--primary-color, #4A7BA8) 84%, var(--text-color, #111827));
 }}
 html,body,[class*="css"]{{font-family:'Inter',sans-serif!important;}}
 body,.stApp,[data-testid="stAppViewContainer"],[data-testid="stAppViewContainer"] > .main{{background:var(--bg)!important;color:var(--text)!important;}}
@@ -692,9 +629,9 @@ with tab1:
         apply_base(fig_donut, h=270, legend_h=False)
         fig_donut.update_layout(
             showlegend=True,
-            legend=dict(orientation="v", x=1.02, y=0.5, font=dict(size=12, color=THEME["text"])),
+            legend=dict(orientation="v", x=1.02, y=0.5, font=dict(size=12, color="var(--text-color)")),
             annotations=[dict(text=f"<b>{len(df1):,}</b>", x=0.5, y=0.5,
-                              font_size=16, showarrow=False, font_color=THEME["text"])],
+                              font_size=16, showarrow=False, font_color="var(--text-color)")],
         )
         st.plotly_chart(fig_donut, use_container_width=True, config={"displayModeBar": False})
         st.markdown('</div>', unsafe_allow_html=True)
@@ -718,7 +655,7 @@ with tab1:
             fig_proy.update_traces(hovertemplate="<b>%{y}</b><br>%{data.name}: %{x}<extra></extra>",
                                    marker_line_width=0)
             apply_base(fig_proy, h=270)
-            fig_proy.update_layout(xaxis=dict(title="", gridcolor=THEME["grid"]),
+            fig_proy.update_layout(xaxis=dict(title="", gridcolor="var(--grid)"),
                                    yaxis=dict(title="", gridwidth=0))
             st.plotly_chart(fig_proy, use_container_width=True, config={"displayModeBar": False})
         st.markdown('</div>', unsafe_allow_html=True)
@@ -746,12 +683,12 @@ with tab1:
             x=sub["Mes"].map(lambda m: MESES[m]), y=sub["n"],
             name=est, mode="lines+markers",
             line=dict(color=COLORS[est], width=2.5, shape="spline", smoothing=1.0),
-            marker=dict(size=8, line=dict(color=THEME["surface"], width=1.5)),
+            marker=dict(size=8, line=dict(color="var(--secondary-background-color)", width=1.5)),
             fill="tozeroy" if est == "Completo" else None, fillcolor=fc,
             hovertemplate=f"<b>%{{x}}</b><br>{est}: %{{y}}<extra></extra>",
         ))
     apply_base(fig_line, h=295)
-    fig_line.update_layout(xaxis=dict(gridcolor=THEME["grid"]), yaxis=dict(gridcolor=THEME["grid"]))
+    fig_line.update_layout(xaxis=dict(gridcolor="var(--grid)"), yaxis=dict(gridcolor="var(--grid)"))
     st.plotly_chart(fig_line, use_container_width=True, config={"displayModeBar": False})
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -817,18 +754,18 @@ with tab2:
             marker_line_width=0,
             text=t_df["tasa"].map(lambda t: f"{t:.1f}%"),
             textposition="outside",
-            textfont=dict(size=11, color=THEME["muted"]),
+            textfont=dict(size=11, color="var(--muted)"),
             customdata=t_df[["comp", "inc", "no_r", "tot"]].values,
             hovertemplate="<b>%{y}</b><br>Cumplimiento: %{x:.1f}%<br>Completos: %{customdata[0]}<br>Incompletos: %{customdata[1]}<br>No realizados: %{customdata[2]}<br>Total plan meses vencidos: %{customdata[3]}<extra></extra>",
         ))
         fig_tasa.add_vline(x=META, line_dash="dot", line_color="#7BA7D4", line_width=1.5,
                            annotation_text=f"Meta {META}%",
-                           annotation_font_color=THEME["accent"], annotation_font_size=10,
+                           annotation_font_color="var(--primary-color)", annotation_font_size=10,
                            annotation_position="top right")
         apply_base(fig_tasa, h=340, legend_h=False)
         fig_tasa.update_layout(
             showlegend=False,
-            xaxis=dict(range=[0,115], gridcolor=THEME["grid"], ticksuffix="%", title=""),
+            xaxis=dict(range=[0,115], gridcolor="var(--grid)", ticksuffix="%", title=""),
             yaxis=dict(gridwidth=0, title=""),
         )
         st.plotly_chart(fig_tasa, use_container_width=True, config={"displayModeBar": False})
@@ -887,12 +824,12 @@ with tab3:
                 x=adf["Mes"], y=adf[f"{est}_ac"],
                 name=f"{est} (acum.)", mode="lines+markers",
                 line=dict(color=COLORS[est], width=2.5, shape="spline", smoothing=1.0),
-                marker=dict(size=8, line=dict(color=THEME["surface"], width=1.5)),
+                marker=dict(size=8, line=dict(color="var(--secondary-background-color)", width=1.5)),
                 fill="tozeroy", fillcolor=fc,
                 hovertemplate=f"<b>%{{x}}</b><br>{est} acum.: %{{y}}<extra></extra>",
             ))
         apply_base(fig_area, h=300)
-        fig_area.update_layout(xaxis=dict(gridcolor=THEME["grid"]), yaxis=dict(gridcolor=THEME["grid"]))
+        fig_area.update_layout(xaxis=dict(gridcolor="var(--grid)"), yaxis=dict(gridcolor="var(--grid)"))
         st.plotly_chart(fig_area, use_container_width=True, config={"displayModeBar": False})
     st.markdown('</div>', unsafe_allow_html=True)
 
