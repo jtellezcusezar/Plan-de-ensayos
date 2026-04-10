@@ -170,11 +170,9 @@ THEMES = {
     },
 }
 
-if "theme_mode" not in st.session_state:
-    base_theme = (st.get_option("theme.base") or "light").lower()
-    st.session_state["theme_mode"] = "Oscuro" if base_theme == "dark" else "Claro"
-
-THEME = THEMES[st.session_state["theme_mode"]]
+theme_base = (st.get_option("theme.base") or "light").lower()
+theme_mode = "Oscuro" if theme_base == "dark" else "Claro"
+THEME = THEMES[theme_mode]
 
 
 def get_plotly_layout():
