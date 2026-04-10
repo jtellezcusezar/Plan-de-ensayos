@@ -65,30 +65,27 @@ COLORS = {
     "No Realizado": "#D98B8B",
 }
 
-
-def get_plotly_layout():
-    return dict(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="Inter, sans-serif", color="var(--text-color)", size=12),
-        margin=dict(t=40, b=10, l=10, r=10),
-        hoverlabel=dict(
-            bgcolor="var(--plotly-hover-bg)",
-            font_color="var(--plotly-hover-text)",
-            font_size=12,
-            bordercolor="var(--plotly-hover-border)",
-        ),
-    )
+BASE_LAYOUT = dict(
+    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="rgba(0,0,0,0)",
+    font=dict(family="Inter, sans-serif", color="#272829", size=12),
+    margin=dict(t=40, b=10, l=10, r=10),
+    hoverlabel=dict(
+        bgcolor="#1E293B",
+        font_color="#F1F5F9",
+        font_size=12,
+        bordercolor="#334155",
+    ),
+)
 
 def apply_base(fig, h=300, legend_h=True):
     """Aplica el layout base y la leyenda horizontal (por defecto)."""
-    base_layout = get_plotly_layout()
     fig.update_layout(
-        paper_bgcolor=base_layout["paper_bgcolor"],
-        plot_bgcolor=base_layout["plot_bgcolor"],
-        font=base_layout["font"],
-        margin=base_layout["margin"],
-        hoverlabel=base_layout["hoverlabel"],
+        paper_bgcolor=BASE_LAYOUT["paper_bgcolor"],
+        plot_bgcolor=BASE_LAYOUT["plot_bgcolor"],
+        font=BASE_LAYOUT["font"],
+        margin=BASE_LAYOUT["margin"],
+        hoverlabel=BASE_LAYOUT["hoverlabel"],
         height=h,
     )
     if legend_h:
@@ -97,7 +94,7 @@ def apply_base(fig, h=300, legend_h=True):
                 orientation="h",
                 yanchor="bottom",
                 y=1.02,
-                font=dict(size=11, color="var(--text-color)"),
+                font=dict(size=11),
             )
         )
     return fig
@@ -106,122 +103,72 @@ def apply_base(fig, h=300, legend_h=True):
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
-:root {{
-  --bg: var(--background-color, #F6F8FB);
-  --surface: var(--secondary-background-color, #FFFFFF);
-  --surface-soft: var(--secondary-background-color, #FAFBFC);
-  --surface-alt: color-mix(in srgb, var(--secondary-background-color, #FFFFFF) 88%, var(--background-color, #F6F8FB));
-  --text: var(--text-color, #111827);
-  --muted: color-mix(in srgb, var(--text-color, #111827) 56%, transparent);
-  --border: color-mix(in srgb, var(--text-color, #111827) 10%, var(--background-color, #F6F8FB));
-  --accent: var(--primary-color, #4A7BA8);
-  --accent-soft: color-mix(in srgb, var(--primary-color, #4A7BA8) 16%, var(--secondary-background-color, #FFFFFF));
-  --accent-border: color-mix(in srgb, var(--primary-color, #4A7BA8) 32%, var(--secondary-background-color, #FFFFFF));
-  --header-shadow: 0 1px 10px color-mix(in srgb, var(--background-color, #F6F8FB) 35%, #000000);
-  --card-shadow: 0 1px 4px color-mix(in srgb, var(--background-color, #F6F8FB) 30%, #000000);
-  --card-shadow-hover: 0 8px 24px color-mix(in srgb, var(--background-color, #F6F8FB) 40%, #000000);
-  --input-bg: color-mix(in srgb, var(--secondary-background-color, #FFFFFF) 92%, var(--background-color, #F6F8FB));
-  --input-text: var(--text-color, #111827);
-  --focus-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color, #4A7BA8) 18%, transparent);
-  --info-bg: color-mix(in srgb, var(--primary-color, #4A7BA8) 12%, var(--secondary-background-color, #FFFFFF));
-  --info-border: color-mix(in srgb, var(--primary-color, #4A7BA8) 30%, var(--secondary-background-color, #FFFFFF));
-  --info-text: color-mix(in srgb, var(--primary-color, #4A7BA8) 78%, var(--text-color, #111827));
-  --ok-bg: color-mix(in srgb, #6BBF9E 14%, var(--secondary-background-color, #FFFFFF));
-  --ok-border: color-mix(in srgb, #6BBF9E 36%, var(--secondary-background-color, #FFFFFF));
-  --ok-text: color-mix(in srgb, #3D8B6E 82%, var(--text-color, #111827));
-  --grid: color-mix(in srgb, var(--text-color, #111827) 8%, var(--background-color, #F6F8FB));
-  --hover-bg: color-mix(in srgb, var(--secondary-background-color, #FFFFFF) 90%, var(--background-color, #F6F8FB));
-  --scrollbar: color-mix(in srgb, var(--text-color, #111827) 18%, transparent);
-  --plotly-hover-bg: color-mix(in srgb, var(--text-color, #111827) 86%, var(--background-color, #F6F8FB));
-  --plotly-hover-text: var(--background-color, #F6F8FB);
-  --plotly-hover-border: color-mix(in srgb, var(--text-color, #111827) 45%, transparent);
-  --hm-100-bg: color-mix(in srgb, #6BBF9E 38%, var(--secondary-background-color, #FFFFFF));
-  --hm-100-text: color-mix(in srgb, #2D6A4F 88%, var(--text-color, #111827));
-  --hm-75-bg: color-mix(in srgb, #DDE8B2 50%, var(--secondary-background-color, #FFFFFF));
-  --hm-75-text: color-mix(in srgb, #667A1E 86%, var(--text-color, #111827));
-  --hm-50-bg: color-mix(in srgb, #F4E1A6 56%, var(--secondary-background-color, #FFFFFF));
-  --hm-50-text: color-mix(in srgb, #A97B12 86%, var(--text-color, #111827));
-  --hm-25-bg: color-mix(in srgb, #EEC39F 52%, var(--secondary-background-color, #FFFFFF));
-  --hm-25-text: color-mix(in srgb, #A45724 86%, var(--text-color, #111827));
-  --hm-0-bg: color-mix(in srgb, #D98B8B 44%, var(--secondary-background-color, #FFFFFF));
-  --hm-0-text: color-mix(in srgb, #8B2B2B 88%, var(--text-color, #111827));
-  --hm-na-bg: color-mix(in srgb, var(--secondary-background-color, #FFFFFF) 85%, var(--background-color, #F6F8FB));
-  --hm-na-text: color-mix(in srgb, var(--text-color, #111827) 36%, transparent);
-  --badge-complete-bg: color-mix(in srgb, #6BBF9E 16%, var(--secondary-background-color, #FFFFFF));
-  --badge-complete-text: color-mix(in srgb, #3D8B6E 88%, var(--text-color, #111827));
-  --badge-incomplete-bg: color-mix(in srgb, #E8C17A 18%, var(--secondary-background-color, #FFFFFF));
-  --badge-incomplete-text: color-mix(in srgb, #C49A3C 88%, var(--text-color, #111827));
-  --badge-none-bg: color-mix(in srgb, #D98B8B 18%, var(--secondary-background-color, #FFFFFF));
-  --badge-none-text: color-mix(in srgb, #B05B5B 88%, var(--text-color, #111827));
-  --badge-plan-bg: color-mix(in srgb, var(--primary-color, #4A7BA8) 14%, var(--secondary-background-color, #FFFFFF));
-  --badge-plan-text: color-mix(in srgb, var(--primary-color, #4A7BA8) 84%, var(--text-color, #111827));
-}}
-html,body,[class*="css"]{{font-family:'Inter',sans-serif!important;}}
-body,.stApp,[data-testid="stAppViewContainer"],[data-testid="stAppViewContainer"] > .main{{background:var(--bg)!important;color:var(--text)!important;}}
-#MainMenu,footer{{visibility:hidden;}}
-.block-container{{padding-top:0!important;max-width:100%!important;padding-left:2rem!important;padding-right:2rem!important;}}
-[data-testid="stSidebar"]{{display:none;}}
-[data-testid="stToolbar"]{{background:transparent!important;}}
-.app-header{{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 32px;display:flex;align-items:center;justify-content:space-between;margin:-1rem -2rem 0 -2rem;position:sticky;top:0;z-index:100;box-shadow:var(--header-shadow);}}
-.logo-box{{width:36px;height:36px;background:linear-gradient(135deg,#7BA7D4,#4A7BA8);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;}}
-.app-title{{font-size:16px;font-weight:700;color:var(--text);margin:0;}}
-.app-sub{{font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin:0;}}
-.hdr-badge{{background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;border:1px solid var(--accent-border);}}
-.hdr-date{{font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;}}
-.stTabs [data-baseweb="tab-list"]{{background:var(--surface);border-bottom:1px solid var(--border);padding:0;gap:0;margin:0 -2rem;padding-left:2rem;}}
-.stTabs [data-baseweb="tab"]{{font-size:13px!important;font-weight:600!important;color:var(--muted)!important;padding:14px 22px!important;border-bottom:2px solid transparent!important;background:transparent!important;}}
-.stTabs [aria-selected="true"]{{color:var(--accent)!important;border-bottom-color:var(--accent)!important;}}
-.stTabs [data-baseweb="tab-panel"]{{padding-top:24px;}}
-.stTabs [data-baseweb="tab-highlight"]{{display:none;}}
-.filter-bar{{margin-bottom:16px;}}
-.filter-bar-title{{display:none;}}
-div[data-testid="stSelectbox"]>label,div[data-testid="stTextInput"]>label{{font-size:11px!important;font-weight:600!important;color:var(--muted)!important;text-transform:uppercase!important;letter-spacing:.05em!important;margin-bottom:4px!important;}}
-div[data-testid="stSelectbox"]>div>div,div[data-testid="stTextInput"]>div>input{{border-radius:10px!important;border:1.5px solid var(--border)!important;background:var(--input-bg)!important;font-size:13px!important;color:var(--input-text)!important;}}
-div[data-testid="stSelectbox"] svg{{fill:var(--muted)!important;}}
-div[data-testid="stSelectbox"]>div>div:focus-within,div[data-testid="stTextInput"]>div>input:focus{{border-color:var(--accent)!important;box-shadow:var(--focus-shadow)!important;}}
-.kpi-card{{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;position:relative;overflow:hidden;box-shadow:var(--card-shadow);transition:transform .15s,box-shadow .15s;}}
-.kpi-card:hover{{transform:translateY(-2px);box-shadow:var(--card-shadow-hover);}}
-.kpi-card::before{{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:14px 14px 0 0;}}
-.kp-blue::before{{background:#7BA7D4;}}.kp-green::before{{background:#6BBF9E;}}.kp-yellow::before{{background:#E8C17A;}}.kp-red::before{{background:#D98B8B;}}.kp-slate::before{{background:linear-gradient(90deg,#7BA7D4,#6BBF9E);}}
-.kpi-icon{{font-size:20px;margin-bottom:8px;}}.kpi-label{{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}}
-.kpi-value{{font-size:28px;font-weight:800;line-height:1;font-family:'DM Mono',monospace;margin-bottom:4px;}}.kpi-sub{{font-size:11px;color:var(--muted);}}
-.kp-blue .kpi-value{{color:#7BA7D4;}}.kp-green .kpi-value{{color:#6BBF9E;}}.kp-yellow .kpi-value{{color:#E8C17A;}}.kp-red .kpi-value{{color:#D98B8B;}}.kp-slate .kpi-value{{color:var(--accent);}}
-.section-head{{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:0 0 10px 0;padding-bottom:8px;border-bottom:1px solid var(--border);}}
-.section-title{{font-size:15px;font-weight:700;color:var(--text);line-height:1.2;margin:0;}}
-.section-sub{{font-size:11px;color:var(--muted);line-height:1.4;text-align:right;max-width:60%;margin:0;}}
-.dash-card{{background:transparent;border:none;border-radius:0;padding:0;margin-bottom:18px;box-shadow:none;}}
-.card-title{{font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px;}}.card-sub{{font-size:11px;color:var(--muted);margin-bottom:14px;}}
-.info-note{{padding:9px 14px;background:var(--info-bg);border:1px solid var(--info-border);border-radius:10px;font-size:12px;color:var(--info-text);font-weight:500;margin-bottom:18px;}}
-.ok-note{{padding:9px 14px;background:var(--ok-bg);border:1px solid var(--ok-border);border-radius:10px;font-size:12px;color:var(--ok-text);font-weight:500;}}
-.sem-grid{{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;}}
-.sem-card{{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;min-width:160px;position:relative;overflow:hidden;box-shadow:var(--card-shadow);transition:transform .15s;}}
-.sem-card:hover{{transform:translateY(-1px);}}
-.sem-card::after{{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;border-radius:0 0 12px 12px;}}
-.sv::after{{background:#6BBF9E;}}.sa::after{{background:#E8C17A;}}.sr::after{{background:#D98B8B;}}
-.sem-dot{{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;}}
-.sem-name{{font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;}}
-.sem-tasa{{font-size:22px;font-weight:800;font-family:'DM Mono',monospace;}}
-.sv .sem-tasa{{color:#6BBF9E;}}.sa .sem-tasa{{color:#E8C17A;}}.sr .sem-tasa{{color:#D98B8B;}}
-.sem-detail{{font-size:11px;color:var(--muted);margin-top:3px;}}
-.hm-wrap{{overflow-x:auto;border-radius:10px;border:1px solid var(--border);}}
-.hm-table{{width:100%;border-collapse:collapse;font-size:12px;}}
-.hm-table th{{background:var(--surface-alt);padding:9px 8px;text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap;}}
-.hm-table th.hmp{{text-align:left;min-width:160px;padding-left:16px;}}
-.hm-table td{{padding:8px;text-align:center;font-weight:700;font-family:'DM Mono',monospace;border-bottom:1px solid var(--grid);}}
-.hm-table td.hmpn{{text-align:left;font-family:'Inter',sans-serif;font-size:12px;padding-left:16px;color:var(--text);font-weight:600;}}
-.hm-table tr:last-child td{{border-bottom:none;}}.hm-table tr:hover td{{filter:brightness(.97);}}
-.h100{{background:var(--hm-100-bg);color:var(--hm-100-text);}}.h75{{background:var(--hm-75-bg);color:var(--hm-75-text);}}.h50{{background:var(--hm-50-bg);color:var(--hm-50-text);}}.h25{{background:var(--hm-25-bg);color:var(--hm-25-text);}}.h0{{background:var(--hm-0-bg);color:var(--hm-0-text);}}.hna{{background:var(--hm-na-bg);color:var(--hm-na-text);font-family:'Inter',sans-serif;font-weight:500;font-size:11px;}}
-.badge{{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}}
-.bc{{background:var(--badge-complete-bg);color:var(--badge-complete-text);}}.bi{{background:var(--badge-incomplete-bg);color:var(--badge-incomplete-text);}}.bn{{background:var(--badge-none-bg);color:var(--badge-none-text);}}.bp{{background:var(--badge-plan-bg);color:var(--badge-plan-text);}}
-.rt{{width:100%;border-collapse:collapse;font-size:13px;}}
-.rt th{{background:var(--surface-alt);padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);white-space:nowrap;}}
-.rt td{{padding:10px 14px;border-bottom:1px solid var(--grid);color:var(--muted);}}
-.rt td:first-child{{color:var(--text);font-weight:600;}}.rt tr:last-child td{{border-bottom:none;}}.rt tr:hover td{{background:var(--hover-bg);}}
-.hml{{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}}
-.hml span{{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;}}
-div[data-testid="stDownloadButton"] button{{background:var(--accent-soft)!important;color:var(--accent)!important;border:1.5px solid var(--accent-border)!important;border-radius:8px!important;font-size:12px!important;font-weight:600!important;padding:6px 14px!important;}}
-div[data-testid="stDownloadButton"] button:hover{{background:var(--accent)!important;color:#fff!important;}}
-::-webkit-scrollbar{{width:5px;height:5px;}}::-webkit-scrollbar-track{{background:transparent;}}::-webkit-scrollbar-thumb{{background:var(--scrollbar);border-radius:3px;}}
+html,body,[class*="css"]{font-family:'Inter',sans-serif!important;}
+#MainMenu,footer{visibility:hidden;}
+.block-container{padding-top:0!important;max-width:100%!important;padding-left:2rem!important;padding-right:2rem!important;}
+[data-testid="stSidebar"]{display:none;}
+.app-header{background:#fff;border-bottom:1px solid #E5E9F0;padding:14px 32px;display:flex;align-items:center;justify-content:space-between;margin:-1rem -2rem 0 -2rem;position:sticky;top:0;z-index:100;box-shadow:0 1px 6px rgba(15,23,42,.07);}
+.logo-box{width:36px;height:36px;background:linear-gradient(135deg,#7BA7D4,#4A7BA8);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.app-title{font-size:16px;font-weight:700;color:#111827;margin:0;}
+.app-sub{font-size:11px;color:#9CA3AF;font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin:0;}
+.hdr-badge{background:#EEF3FA;color:#4A7BA8;font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;}
+.hdr-date{font-size:12px;color:#9CA3AF;font-family:'DM Mono',monospace;}
+.stTabs [data-baseweb="tab-list"]{background:#fff;border-bottom:1px solid #E5E9F0;padding:0;gap:0;margin:0 -2rem;padding-left:2rem;}
+.stTabs [data-baseweb="tab"]{font-size:13px!important;font-weight:600!important;color:#9CA3AF!important;padding:14px 22px!important;border-bottom:2px solid transparent!important;background:transparent!important;}
+.stTabs [aria-selected="true"]{color:#4A7BA8!important;border-bottom-color:#4A7BA8!important;}
+.stTabs [data-baseweb="tab-panel"]{padding-top:24px;}
+.stTabs [data-baseweb="tab-highlight"]{display:none;}
+.filter-bar{margin-bottom:16px;}
+.filter-bar-title{display:none;}
+div[data-testid="stSelectbox"]>label{font-size:11px!important;font-weight:600!important;color:#6B7280!important;text-transform:uppercase!important;letter-spacing:.05em!important;margin-bottom:4px!important;}
+div[data-testid="stSelectbox"]>div>div{border-radius:10px!important;border:1.5px solid #E5E9F0!important;background:#FAFBFC!important;font-size:13px!important;color:#374151!important;}
+div[data-testid="stSelectbox"]>div>div:focus-within{border-color:#7BA7D4!important;box-shadow:0 0 0 3px rgba(123,167,212,.12)!important;}
+div[data-testid="stTextInput"]>label{font-size:11px!important;font-weight:600!important;color:#6B7280!important;text-transform:uppercase!important;letter-spacing:.05em!important;}
+div[data-testid="stTextInput"]>div>input{border-radius:10px!important;border:1.5px solid #E5E9F0!important;background:#FAFBFC!important;font-size:13px!important;color:#374151!important;}
+div[data-testid="stTextInput"]>div>input:focus{border-color:#7BA7D4!important;box-shadow:0 0 0 3px rgba(123,167,212,.12)!important;}
+.kpi-card{background:#fff;border:1px solid #E5E9F0;border-radius:14px;padding:18px 20px;position:relative;overflow:hidden;box-shadow:0 1px 4px rgba(15,23,42,.05);transition:transform .15s,box-shadow .15s;}
+.kpi-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(15,23,42,.08);}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:14px 14px 0 0;}
+.kp-blue::before{background:#7BA7D4;}.kp-green::before{background:#6BBF9E;}.kp-yellow::before{background:#E8C17A;}.kp-red::before{background:#D98B8B;}.kp-slate::before{background:linear-gradient(90deg,#7BA7D4,#6BBF9E);}
+.kpi-icon{font-size:20px;margin-bottom:8px;}.kpi-label{font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
+.kpi-value{font-size:28px;font-weight:800;line-height:1;font-family:'DM Mono',monospace;margin-bottom:4px;}.kpi-sub{font-size:11px;color:#9CA3AF;}
+.kp-blue .kpi-value{color:#4A7BA8;}.kp-green .kpi-value{color:#3D8B6E;}.kp-yellow .kpi-value{color:#C49A3C;}.kp-red .kpi-value{color:#B05B5B;}.kp-slate .kpi-value{color:#4A7BA8;}
+.section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:0 0 10px 0;padding-bottom:8px;border-bottom:1px solid #E5E9F0;}
+.section-title{font-size:15px;font-weight:700;color:#111827;line-height:1.2;margin:0;}
+.section-sub{font-size:11px;color:#9CA3AF;line-height:1.4;text-align:right;max-width:60%;margin:0;}
+.dash-card{background:transparent;border:none;border-radius:0;padding:0;margin-bottom:18px;box-shadow:none;}
+.card-title{font-size:14px;font-weight:700;color:#111827;margin-bottom:2px;}.card-sub{font-size:11px;color:#9CA3AF;margin-bottom:14px;}
+.info-note{padding:9px 14px;background:#EEF3FA;border:1px solid #C8DCF0;border-radius:10px;font-size:12px;color:#4A7BA8;font-weight:500;margin-bottom:18px;}
+.ok-note{padding:9px 14px;background:#E4F4EE;border:1px solid #A8D5BF;border-radius:10px;font-size:12px;color:#3D8B6E;font-weight:500;}
+.sem-grid{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;}
+.sem-card{background:#fff;border:1px solid #E5E9F0;border-radius:12px;padding:14px 18px;min-width:160px;position:relative;overflow:hidden;box-shadow:0 1px 4px rgba(15,23,42,.05);transition:transform .15s;}
+.sem-card:hover{transform:translateY(-1px);}
+.sem-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;border-radius:0 0 12px 12px;}
+.sv::after{background:#6BBF9E;}.sa::after{background:#E8C17A;}.sr::after{background:#D98B8B;}
+.sem-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;}
+.sem-name{font-size:12px;font-weight:700;color:#111827;margin-bottom:6px;display:flex;align-items:center;}
+.sem-tasa{font-size:22px;font-weight:800;font-family:'DM Mono',monospace;}
+.sv .sem-tasa{color:#3D8B6E;}.sa .sem-tasa{color:#C49A3C;}.sr .sem-tasa{color:#B05B5B;}
+.sem-detail{font-size:11px;color:#9CA3AF;margin-top:3px;}
+.hm-wrap{overflow-x:auto;border-radius:10px;border:1px solid #E5E9F0;}
+.hm-table{width:100%;border-collapse:collapse;font-size:12px;}
+.hm-table th{background:#F8F9FB;padding:9px 8px;text-align:center;font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;border-bottom:1px solid #E5E9F0;white-space:nowrap;}
+.hm-table th.hmp{text-align:left;min-width:160px;padding-left:16px;}
+.hm-table td{padding:8px;text-align:center;font-weight:700;font-family:'DM Mono',monospace;border-bottom:1px solid #F3F4F6;}
+.hm-table td.hmpn{text-align:left;font-family:'Inter',sans-serif;font-size:12px;padding-left:16px;color:#111827;font-weight:600;}
+.hm-table tr:last-child td{border-bottom:none;}.hm-table tr:hover td{filter:brightness(.97);}
+.h100{background:#B8E4D0;color:#2D6A4F;}.h75{background:#DDE8B2;color:#667A1E;}.h50{background:#F4E1A6;color:#A97B12;}.h25{background:#EEC39F;color:#A45724;}.h0{background:#F0C8C8;color:#8B2B2B;}.hna{background:#F8F9FB;color:#C4CAD4;font-family:'Inter',sans-serif;font-weight:500;font-size:11px;}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+.bc{background:#E4F4EE;color:#3D8B6E;}.bi{background:#FBF3E0;color:#C49A3C;}.bn{background:#F8E8E8;color:#B05B5B;}.bp{background:#EEF3FA;color:#4A7BA8;}
+.rt{width:100%;border-collapse:collapse;font-size:13px;}
+.rt th{background:#F8F9FB;padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #E5E9F0;white-space:nowrap;}
+.rt td{padding:10px 14px;border-bottom:1px solid #F3F4F6;color:#6B7280;}
+.rt td:first-child{color:#111827;font-weight:600;}.rt tr:last-child td{border-bottom:none;}.rt tr:hover td{background:#FAFBFC;}
+.hml{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
+.hml span{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;}
+div[data-testid="stDownloadButton"] button{background:#EEF3FA!important;color:#4A7BA8!important;border:1.5px solid #C8DCF0!important;border-radius:8px!important;font-size:12px!important;font-weight:600!important;padding:6px 14px!important;}
+div[data-testid="stDownloadButton"] button:hover{background:#7BA7D4!important;color:#fff!important;}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:#E5E9F0;border-radius:3px;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -378,13 +325,13 @@ def hm_cls(t):
 
 def heatmap_legend():
     return f"""<div class="hml">
-      <span style="background:var(--hm-100-bg);color:var(--hm-100-text);">≥ 90%</span>
-      <span style="background:var(--hm-75-bg);color:var(--hm-75-text);">70–89%</span>
-      <span style="background:var(--hm-50-bg);color:var(--hm-50-text);">50–69%</span>
-      <span style="background:var(--hm-25-bg);color:var(--hm-25-text);">25–49%</span>
-      <span style="background:var(--hm-0-bg);color:var(--hm-0-text);">&lt; 25%</span>
-      <span style="background:var(--hm-na-bg);color:var(--hm-na-text);">Sin datos</span>
-      <span style="font-size:11px;color:var(--muted);margin-left:4px;">· Meta: {META}%</span>
+      <span style="background:#B8E4D0;color:#2D6A4F;">≥ 90%</span>
+      <span style="background:#DDE8B2;color:#667A1E;">70–89%</span>
+      <span style="background:#F4E1A6;color:#A97B12;">50–69%</span>
+      <span style="background:#EEC39F;color:#A45724;">25–49%</span>
+      <span style="background:#F0C8C8;color:#8B2B2B;">&lt; 25%</span>
+      <span style="background:#F8F9FB;color:#C4CAD4;">Sin datos</span>
+      <span style="font-size:11px;color:#9CA3AF;margin-left:4px;">· Meta: {META}%</span>
     </div>"""
 
 def render_heatmap_table(first_col_label, rows_data):
@@ -629,9 +576,9 @@ with tab1:
         apply_base(fig_donut, h=270, legend_h=False)
         fig_donut.update_layout(
             showlegend=True,
-            legend=dict(orientation="v", x=1.02, y=0.5, font=dict(size=12, color="var(--text-color)")),
+            legend=dict(orientation="v", x=1.02, y=0.5, font=dict(size=12)),
             annotations=[dict(text=f"<b>{len(df1):,}</b>", x=0.5, y=0.5,
-                              font_size=16, showarrow=False, font_color="var(--text-color)")],
+                              font_size=16, showarrow=False, font_color="#111827")],
         )
         st.plotly_chart(fig_donut, use_container_width=True, config={"displayModeBar": False})
         st.markdown('</div>', unsafe_allow_html=True)
@@ -655,7 +602,7 @@ with tab1:
             fig_proy.update_traces(hovertemplate="<b>%{y}</b><br>%{data.name}: %{x}<extra></extra>",
                                    marker_line_width=0)
             apply_base(fig_proy, h=270)
-            fig_proy.update_layout(xaxis=dict(title="", gridcolor="var(--grid)"),
+            fig_proy.update_layout(xaxis=dict(title="", gridcolor="#F3F4F6"),
                                    yaxis=dict(title="", gridwidth=0))
             st.plotly_chart(fig_proy, use_container_width=True, config={"displayModeBar": False})
         st.markdown('</div>', unsafe_allow_html=True)
@@ -683,12 +630,12 @@ with tab1:
             x=sub["Mes"].map(lambda m: MESES[m]), y=sub["n"],
             name=est, mode="lines+markers",
             line=dict(color=COLORS[est], width=2.5, shape="spline", smoothing=1.0),
-            marker=dict(size=8, line=dict(color="var(--secondary-background-color)", width=1.5)),
+            marker=dict(size=8, line=dict(color="white", width=1.5)),
             fill="tozeroy" if est == "Completo" else None, fillcolor=fc,
             hovertemplate=f"<b>%{{x}}</b><br>{est}: %{{y}}<extra></extra>",
         ))
     apply_base(fig_line, h=295)
-    fig_line.update_layout(xaxis=dict(gridcolor="var(--grid)"), yaxis=dict(gridcolor="var(--grid)"))
+    fig_line.update_layout(xaxis=dict(gridcolor="#F3F4F6"), yaxis=dict(gridcolor="#F3F4F6"))
     st.plotly_chart(fig_line, use_container_width=True, config={"displayModeBar": False})
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -754,18 +701,18 @@ with tab2:
             marker_line_width=0,
             text=t_df["tasa"].map(lambda t: f"{t:.1f}%"),
             textposition="outside",
-            textfont=dict(size=11, color="var(--muted)"),
+            textfont=dict(size=11, color="#6B7280"),
             customdata=t_df[["comp", "inc", "no_r", "tot"]].values,
             hovertemplate="<b>%{y}</b><br>Cumplimiento: %{x:.1f}%<br>Completos: %{customdata[0]}<br>Incompletos: %{customdata[1]}<br>No realizados: %{customdata[2]}<br>Total plan meses vencidos: %{customdata[3]}<extra></extra>",
         ))
         fig_tasa.add_vline(x=META, line_dash="dot", line_color="#7BA7D4", line_width=1.5,
                            annotation_text=f"Meta {META}%",
-                           annotation_font_color="var(--primary-color)", annotation_font_size=10,
+                           annotation_font_color="#7BA7D4", annotation_font_size=10,
                            annotation_position="top right")
         apply_base(fig_tasa, h=340, legend_h=False)
         fig_tasa.update_layout(
             showlegend=False,
-            xaxis=dict(range=[0,115], gridcolor="var(--grid)", ticksuffix="%", title=""),
+            xaxis=dict(range=[0,115], gridcolor="#F3F4F6", ticksuffix="%", title=""),
             yaxis=dict(gridwidth=0, title=""),
         )
         st.plotly_chart(fig_tasa, use_container_width=True, config={"displayModeBar": False})
@@ -824,12 +771,12 @@ with tab3:
                 x=adf["Mes"], y=adf[f"{est}_ac"],
                 name=f"{est} (acum.)", mode="lines+markers",
                 line=dict(color=COLORS[est], width=2.5, shape="spline", smoothing=1.0),
-                marker=dict(size=8, line=dict(color="var(--secondary-background-color)", width=1.5)),
+                marker=dict(size=8, line=dict(color="white", width=1.5)),
                 fill="tozeroy", fillcolor=fc,
                 hovertemplate=f"<b>%{{x}}</b><br>{est} acum.: %{{y}}<extra></extra>",
             ))
         apply_base(fig_area, h=300)
-        fig_area.update_layout(xaxis=dict(gridcolor="var(--grid)"), yaxis=dict(gridcolor="var(--grid)"))
+        fig_area.update_layout(xaxis=dict(gridcolor="#F3F4F6"), yaxis=dict(gridcolor="#F3F4F6"))
         st.plotly_chart(fig_area, use_container_width=True, config={"displayModeBar": False})
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -851,7 +798,7 @@ with tab3:
             f"<td>{r.Ensayo}</td><td>{r.NTC}</td><td>{r.Mes}</td><td>{badge(r.Estado)}</td></tr>"
             for _, r in crit_df.iterrows())
         st.markdown(
-            f'<div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border);">'
+            f'<div style="overflow-x:auto;border-radius:10px;border:1px solid #E5E9F0;">'
             f'<table class="rt"><thead><tr><th>Proyecto</th><th>Etapa</th><th>Material</th>'
             f'<th>Ensayo</th><th>NTC</th><th>Mes</th><th>Estado</th></tr></thead>'
             f'<tbody>{rows_t}</tbody></table></div>',
@@ -917,12 +864,12 @@ with tab4:
         rows4 = "".join(
             f"<tr><td>{r.Proyecto}</td><td>{r.Etapa}</td><td>{r.Material}</td>"
             f"<td>{r.Ensayo}</td><td>{r.NTC}</td>"
-            f"<td style='max-width:180px;white-space:normal;font-size:11px;color:var(--muted)'>{r.Frecuencia}</td>"
+            f"<td style='max-width:180px;white-space:normal;font-size:11px;color:#9CA3AF'>{r.Frecuencia}</td>"
             f"<td>{r.Mes}</td><td>{badge(r.Estado)}</td></tr>"
             for _, r in prev.iterrows())
         st.markdown(f'<div class="card-sub">Mostrando {min(50,len(disp))} de {len(disp):,} registros.</div>', unsafe_allow_html=True)
         st.markdown(
-            f'<div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border);max-height:480px;overflow-y:auto;">'
+            f'<div style="overflow-x:auto;border-radius:10px;border:1px solid #E5E9F0;max-height:480px;overflow-y:auto;">'
             f'<table class="rt"><thead><tr><th>Proyecto</th><th>Etapa</th><th>Material</th>'
             f'<th>Ensayo</th><th>NTC</th><th>Frecuencia</th><th>Mes</th><th>Estado</th></tr></thead>'
             f'<tbody>{rows4}</tbody></table></div>',
