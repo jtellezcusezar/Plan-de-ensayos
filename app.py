@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 import plotly.graph_objects as go
 from pathlib import Path
 from datetime import datetime
@@ -64,13 +65,17 @@ COLORS = {
     "No Realizado": "#D98B8B",
 }
 
-# ── PLOTLY LAYOUT BASE ─────────────────────────────────────────────────────────
-# No incluye 'legend' para evitar conflictos al llamar update_layout
 BASE_LAYOUT = dict(
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
-    font=dict(family="Inter, sans-serif", size=12),
+    font=dict(family="Inter, sans-serif", color="#272829", size=12),
     margin=dict(t=40, b=10, l=10, r=10),
+    hoverlabel=dict(
+        bgcolor="#1E293B",
+        font_color="#F1F5F9",
+        font_size=12,
+        bordercolor="#334155",
+    ),
 )
 
 def apply_base(fig, h=300, legend_h=True):
@@ -80,11 +85,17 @@ def apply_base(fig, h=300, legend_h=True):
         plot_bgcolor=BASE_LAYOUT["plot_bgcolor"],
         font=BASE_LAYOUT["font"],
         margin=BASE_LAYOUT["margin"],
+        hoverlabel=BASE_LAYOUT["hoverlabel"],
         height=h,
     )
     if legend_h:
         fig.update_layout(
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, font=dict(size=11))
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                font=dict(size=11),
+            )
         )
     return fig
 
@@ -278,86 +289,6 @@ def kpi(icon, label, value, sub, css):
             f'<div class="kpi-label">{label}</div><div class="kpi-value">{value}</div>'
             f'<div class="kpi-sub">{sub}</div></div>')
 
-
-def render_kpi(col, icon, label, value, sub="", accent="#7BA7D4"):
-    with col.container(border=True):
-        st.markdown(
-            f"<div style='height:4px;background:{accent};border-radius:999px;"
-            f"margin:-0.55rem -0.55rem 0.75rem -0.55rem;'></div>",
-            unsafe_allow_html=True,
-        )
-        try:
-            st.metric(f"{icon} {label}", value, border=False)
-        except TypeError:
-            st.metric(f"{icon} {label}", value)
-        if sub:
-            st.caption(sub)
-
-
-def render_native_bar_chart(target, data, **kwargs):
-    try:
-        target.bar_chart(data, **kwargs)
-    except TypeError:
-        fallback_kwargs = {
-            k: v for k, v in kwargs.items()
-            if k not in {"horizontal", "stack", "sort", "x_label", "y_label"}
-        }
-        target.bar_chart(data, **fallback_kwargs)
-
-
-def render_native_donut_chart(target, data, theta, color, total, title=None,
-                              legend="right", width=None, height=270,
-                              use_container_width=True):
-    color_domain = [estado for estado in COLORS if estado in data[color].tolist()]
-    color_range = [COLORS[estado] for estado in color_domain]
-    chart_data = data.copy()
-    spec = {
-        "layer": [
-            {
-                "mark": {
-                    "type": "arc",
-                    "innerRadius": 58,
-                    "outerRadius": 95,
-                    "cornerRadius": 6,
-                },
-                "encoding": {
-                    "theta": {
-                        "field": theta,
-                        "type": "quantitative",
-                    },
-                    "color": {
-                        "field": color,
-                        "type": "nominal",
-                        "scale": {
-                            "domain": color_domain,
-                            "range": color_range,
-                        },
-                        "legend": {
-                            "orient": legend,
-                            "title": None,
-                            "labelFontSize": 12,
-                        } if legend else None,
-                    },
-                    "tooltip": [
-                        {"field": color, "type": "nominal", "title": "Estado"},
-                        {"field": theta, "type": "quantitative", "title": "Total"},
-                    ],
-                },
-            },
-        ],
-        "view": {"stroke": None},
-        "title": title,
-    }
-    if width is not None:
-        spec["width"] = width
-    if height is not None:
-        spec["height"] = height
-
-    try:
-        target.vega_lite_chart(chart_data, spec, use_container_width=use_container_width)
-    except TypeError:
-        target.vega_lite_chart(chart_data, spec)
-
 def section_header(title, subtitle=""):
     subtitle_html = f'<div class="section-sub">{subtitle}</div>' if subtitle else ""
     return (
@@ -399,7 +330,7 @@ def heatmap_legend():
       <span style="background:#F4E1A6;color:#A97B12;">50–69%</span>
       <span style="background:#EEC39F;color:#A45724;">25–49%</span>
       <span style="background:#F0C8C8;color:#8B2B2B;">&lt; 25%</span>
-      <span style="background:#F8F9FB;color:#9CA3AF;">Sin datos</span>
+      <span style="background:#F8F9FB;color:#C4CAD4;">Sin datos</span>
       <span style="font-size:11px;color:#9CA3AF;margin-left:4px;">· Meta: {META}%</span>
     </div>"""
 
@@ -578,6 +509,7 @@ def build_heatmap_rows(df_ctrl, df_ens, area):
 
 # ── HEADER ─────────────────────────────────────────────────────────────────────
 st.markdown(f"""
+<div style="height:28px"></div>
 <div class="app-header">
   <div style="display:flex;align-items:center;gap:12px;">
     <div class="logo-box">🏗️</div>
@@ -617,11 +549,11 @@ with tab1:
 
     comp, inc, no_r, plan, pend, tot, tasa = get_kpis(df1)
     k1, k2, k3, k4, k5 = st.columns(5)
-    render_kpi(k1, "📋", "Planeados", f"{plan:,}", f"Pendientes: {pend:,}", "#7BA7D4")
-    render_kpi(k2, "✅", "Completos", f"{comp:,}", f"{comp/tot*100:.1f}% del ejecutable" if tot else "—", "#6BBF9E")
-    render_kpi(k3, "⚠️", "Incompletos", f"{inc:,}", f"{inc/tot*100:.1f}% del ejecutable" if tot else "—", "#E8C17A")
-    render_kpi(k4, "❌", "No Realizados", f"{no_r:,}", f"{no_r/tot*100:.1f}% del ejecutable" if tot else "—", "#D98B8B")
-    render_kpi(k5, "📈", "Tasa Cumplimiento", f"{tasa}%", f"Meta: ≥ {META}%", "#4A7BA8")
+    k1.markdown(kpi("📋","Planeados",         f"{plan:,}", f"Pendientes: {pend:,}",                              "kp-blue"),   unsafe_allow_html=True)
+    k2.markdown(kpi("✅","Completos",         f"{comp:,}", f"{comp/tot*100:.1f}% del ejecutable" if tot else "—","kp-green"),  unsafe_allow_html=True)
+    k3.markdown(kpi("⚠️","Incompletos",       f"{inc:,}",  f"{inc/tot*100:.1f}% del ejecutable"  if tot else "—","kp-yellow"), unsafe_allow_html=True)
+    k4.markdown(kpi("❌","No Realizados",     f"{no_r:,}", f"{no_r/tot*100:.1f}% del ejecutable" if tot else "—","kp-red"),    unsafe_allow_html=True)
+    k5.markdown(kpi("📈","Tasa Cumplimiento", f"{tasa}%",  f"Meta: ≥ {META}%",                                  "kp-slate"),  unsafe_allow_html=True)
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     # ── Donut ──
@@ -631,22 +563,24 @@ with tab1:
         st.markdown('<div class="dash-card">', unsafe_allow_html=True)
         ec = df1["Estado"].value_counts().reset_index()
         ec.columns = ["Estado","n"]
-        donut_info, donut_view = st.columns([0.62, 1.38], vertical_alignment="center")
-        with donut_info:
-            try:
-                st.metric("Total", f"{len(df1):,}", border=False)
-            except TypeError:
-                st.metric("Total", f"{len(df1):,}")
-        render_native_donut_chart(
-            donut_view,
-            ec,
-            theta="n",
-            color="Estado",
-            total=len(df1),
-            legend="bottom",
-            height=270,
-            use_container_width=True,
+        ec["C"] = ec["Estado"].map(COLORS)
+        fig_donut = go.Figure(go.Pie(
+            labels=ec["Estado"], values=ec["n"], hole=0.58,
+            marker_colors=ec["C"].tolist(),
+            textinfo="percent",
+            textposition="outside",
+            insidetextorientation="horizontal",
+            hovertemplate="<b>%{label}</b><br>%{value:,} · %{percent}<extra></extra>",
+        ))
+        # Aplicar layout sin legend primero, luego agregar legend vertical y annotations
+        apply_base(fig_donut, h=270, legend_h=False)
+        fig_donut.update_layout(
+            showlegend=True,
+            legend=dict(orientation="v", x=1.02, y=0.5, font=dict(size=12)),
+            annotations=[dict(text=f"<b>{len(df1):,}</b>", x=0.5, y=0.5,
+                              font_size=16, showarrow=False, font_color="#111827")],
         )
+        st.plotly_chart(fig_donut, use_container_width=True, config={"displayModeBar": False})
         st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Barras por proyecto ──
@@ -660,19 +594,17 @@ with tab1:
                        .sort_values().index.tolist())
             pg = ex1.groupby(["Proyecto","Estado"])["Cantidad_num"].count().reset_index()
             pg.columns = ["Proyecto","Estado","n"]
-            proy_chart = (pg.pivot(index="Proyecto", columns="Estado", values="n")
-                            .reindex(columns=["No Realizado", "Incompleto", "Completo"], fill_value=0)
-                            .fillna(0)
-                            .reindex(orden))
-            render_native_bar_chart(
-                st,
-                proy_chart.reset_index(),
-                x="Proyecto",
-                y=["No Realizado", "Incompleto", "Completo"],
-                color=[COLORS["No Realizado"], COLORS["Incompleto"], COLORS["Completo"]],
-                horizontal=True,
-                stack=True,
-            )
+            fig_proy = px.bar(pg, x="n", y="Proyecto", color="Estado",
+                              orientation="h", barmode="stack",
+                              color_discrete_map=COLORS,
+                              category_orders={"Proyecto": orden,
+                                               "Estado": ["No Realizado","Incompleto","Completo"]})
+            fig_proy.update_traces(hovertemplate="<b>%{y}</b><br>%{data.name}: %{x}<extra></extra>",
+                                   marker_line_width=0)
+            apply_base(fig_proy, h=270)
+            fig_proy.update_layout(xaxis=dict(title="", gridcolor="#F3F4F6"),
+                                   yaxis=dict(title="", gridwidth=0))
+            st.plotly_chart(fig_proy, use_container_width=True, config={"displayModeBar": False})
         st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Línea temporal ──
@@ -762,20 +694,28 @@ with tab2:
                    }))
                    .reset_index()
                    .sort_values("tasa", ascending=False))
-        tasa_chart = t_df.copy()
-        tasa_chart["Bajo meta"] = tasa_chart["tasa"].where(tasa_chart["tasa"] < META * 0.6, 0.0)
-        tasa_chart["En riesgo"] = tasa_chart["tasa"].where((tasa_chart["tasa"] >= META * 0.6) & (tasa_chart["tasa"] < META), 0.0)
-        tasa_chart["Cumple meta"] = tasa_chart["tasa"].where(tasa_chart["tasa"] >= META, 0.0)
-        st.caption(f"Meta de referencia: {META}%")
-        render_native_bar_chart(
-            st,
-            tasa_chart,
-            x="Proyecto",
-            y=["Bajo meta", "En riesgo", "Cumple meta"],
-            color=[COLORS["No Realizado"], COLORS["Incompleto"], COLORS["Completo"]],
-            horizontal=True,
-            stack=True,
+        fig_tasa = go.Figure(go.Bar(
+            x=t_df["tasa"], y=t_df["Proyecto"],
+            orientation="h",
+            marker_color=[bar_col(t) for t in t_df["tasa"]],
+            marker_line_width=0,
+            text=t_df["tasa"].map(lambda t: f"{t:.1f}%"),
+            textposition="outside",
+            textfont=dict(size=11, color="#6B7280"),
+            customdata=t_df[["comp", "inc", "no_r", "tot"]].values,
+            hovertemplate="<b>%{y}</b><br>Cumplimiento: %{x:.1f}%<br>Completos: %{customdata[0]}<br>Incompletos: %{customdata[1]}<br>No realizados: %{customdata[2]}<br>Total plan meses vencidos: %{customdata[3]}<extra></extra>",
+        ))
+        fig_tasa.add_vline(x=META, line_dash="dot", line_color="#7BA7D4", line_width=1.5,
+                           annotation_text=f"Meta {META}%",
+                           annotation_font_color="#7BA7D4", annotation_font_size=10,
+                           annotation_position="top right")
+        apply_base(fig_tasa, h=340, legend_h=False)
+        fig_tasa.update_layout(
+            showlegend=False,
+            xaxis=dict(range=[0,115], gridcolor="#F3F4F6", ticksuffix="%", title=""),
+            yaxis=dict(gridwidth=0, title=""),
         )
+        st.plotly_chart(fig_tasa, use_container_width=True, config={"displayModeBar": False})
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -902,11 +842,11 @@ with tab4:
 
     comp4, inc4, no4, plan4, pend4, tot4, tasa4 = get_kpis(df4)
     a, b, c_, d, e = st.columns(5)
-    render_kpi(a, "🔍", "Resultados", f"{len(df4):,}", "registros", "#4A7BA8")
-    render_kpi(b, "📋", "Planeados", f"{plan4:,}", f"Pendientes: {pend4:,}", "#7BA7D4")
-    render_kpi(c_, "✅", "Completos", f"{comp4:,}", "", "#6BBF9E")
-    render_kpi(d, "⚠️", "Incompletos", f"{inc4:,}", "", "#E8C17A")
-    render_kpi(e, "❌", "No Realizados", f"{no4:,}", "", "#D98B8B")
+    a.markdown(kpi("🔍","Resultados",    f"{len(df4):,}", "registros","kp-slate"),  unsafe_allow_html=True)
+    b.markdown(kpi("📋","Planeados",     f"{plan4:,}",    f"Pendientes: {pend4:,}", "kp-blue"),   unsafe_allow_html=True)
+    c_.markdown(kpi("✅","Completos",    f"{comp4:,}",    "",          "kp-green"),  unsafe_allow_html=True)
+    d.markdown(kpi("⚠️","Incompletos",   f"{inc4:,}",     "",          "kp-yellow"), unsafe_allow_html=True)
+    e.markdown(kpi("❌","No Realizados", f"{no4:,}",      "",          "kp-red"),    unsafe_allow_html=True)
 
     st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
     st.markdown(section_header("Resultados de la Consulta"), unsafe_allow_html=True)
