@@ -634,21 +634,16 @@ with tab1:
         donut_info, donut_view = st.columns([0.62, 1.38], vertical_alignment="center")
         with donut_info:
             try:
-                st.metric("Total registros", f"{len(df1):,}", border=True)
+                st.metric("Total", f"{len(df1):,}", border=False)
             except TypeError:
-                st.metric("Total registros", f"{len(df1):,}")
-            for _, row in ec.iterrows():
-                porcentaje = (row["n"] / len(df1) * 100) if len(df1) else 0
-                st.markdown(
-                    f"{row['Estado']}: **{int(row['n']):,}** ({porcentaje:.1f}%)"
-                )
+                st.metric("Total", f"{len(df1):,}")
         render_native_donut_chart(
             donut_view,
             ec,
             theta="n",
             color="Estado",
             total=len(df1),
-            legend=None,
+            legend="bottom",
             height=270,
             use_container_width=True,
         )
