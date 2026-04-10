@@ -8,6 +8,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from openpyxl import load_workbook
 import json
+import re
 from uuid import uuid4
 
 st.set_page_config(
@@ -296,6 +297,12 @@ def kpi(icon, label, value, sub, css):
 def render_echarts(option, height=320):
     chart_id = f"echart-{uuid4().hex}"
     option_json = json.dumps(option, ensure_ascii=False)
+    option_json = re.sub(
+        r'"__JS__(.*?)__JS__"',
+        lambda m: m.group(1).replace('\\"', '"'),
+        option_json,
+        flags=re.DOTALL,
+    )
     html = f"""
     <div id="{chart_id}" style="width:100%;height:{height}px;"></div>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
@@ -457,12 +464,12 @@ def build_echarts_heatmap_config(rows_data):
         "textStyle": {"fontFamily": "Inter, sans-serif"},
         "tooltip": {
             "position": "top",
-            "formatter": """function (params) {
+            "formatter": """__JS__function (params) {
                 const raw = params.data;
                 const titulo = raw[4];
                 const valor = raw[3];
                 return '<b>' + params.name + '</b><br/>' + valor + '<br/>' + titulo;
-            }""",
+            }__JS__""",
         },
         "grid": {"left": 110, "right": 18, "top": 10, "bottom": 20, "containLabel": True},
         "xAxis": {
@@ -500,7 +507,7 @@ def build_echarts_heatmap_config(rows_data):
             "data": data,
             "label": {
                 "show": True,
-                "formatter": """function (params) { return params.data[3]; }""",
+                "formatter": """__JS__function (params) { return params.data[3]; }__JS__""",
                 "fontFamily": "Inter, sans-serif",
                 "fontSize": 10,
                 "fontWeight": 700,
@@ -915,14 +922,14 @@ with tab2:
             "textStyle": {"fontFamily": "Inter, sans-serif"},
             "tooltip": {
                 "trigger": "item",
-                "formatter": """function (params) {
+                "formatter": """__JS__function (params) {
                     const d = params.data;
                     return '<b>' + d.proyecto + '</b><br/>Cumplimiento: ' + d.value.toFixed(1) + '%' +
                            '<br/>Completos: ' + d.comp +
                            '<br/>Incompletos: ' + d.inc +
                            '<br/>No realizados: ' + d.no_r +
                            '<br/>Total plan meses vencidos: ' + d.tot;
-                }""",
+                }__JS__""",
             },
             "grid": {"left": 120, "right": 35, "top": 24, "bottom": 20, "containLabel": True},
             "xAxis": {
