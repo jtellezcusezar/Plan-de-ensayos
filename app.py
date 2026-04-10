@@ -149,7 +149,7 @@ div[data-testid="stTextInput"]>div>input:focus{border-color:#7BA7D4!important;bo
 .hm-table td{padding:8px;text-align:center;font-weight:700;font-family:'DM Mono',monospace;border-bottom:1px solid #F3F4F6;}
 .hm-table td.hmpn{text-align:left;font-family:'Inter',sans-serif;font-size:12px;padding-left:16px;color:#111827;font-weight:600;}
 .hm-table tr:last-child td{border-bottom:none;}.hm-table tr:hover td{filter:brightness(.97);}
-.h100{background:#B8E4D0;color:#2D6A4F;}.h75{background:#D5EFE3;color:#3D8B6E;}.h50{background:#FBF3E0;color:#C49A3C;}.h25{background:#F6D9D9;color:#9B3B3B;}.h0{background:#F0C8C8;color:#8B2B2B;}.hna{background:#F8F9FB;color:#C4CAD4;font-family:'Inter',sans-serif;font-weight:500;font-size:11px;}
+.h100{background:#B8E4D0;color:#2D6A4F;}.h75{background:#F5E7B5;color:#8A6A10;}.h50{background:#FBF3E0;color:#C49A3C;}.h25{background:#F6D9D9;color:#9B3B3B;}.h0{background:#F0C8C8;color:#8B2B2B;}.hna{background:#F8F9FB;color:#C4CAD4;font-family:'Inter',sans-serif;font-weight:500;font-size:11px;}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
 .bc{background:#E4F4EE;color:#3D8B6E;}.bi{background:#FBF3E0;color:#C49A3C;}.bn{background:#F8E8E8;color:#B05B5B;}.bp{background:#EEF3FA;color:#4A7BA8;}
 .rt{width:100%;border-collapse:collapse;font-size:13px;}
@@ -298,7 +298,7 @@ def hm_cls(t):
 def heatmap_legend():
     return f"""<div class="hml">
       <span style="background:#B8E4D0;color:#2D6A4F;">≥ 90%</span>
-      <span style="background:#D5EFE3;color:#3D8B6E;">70–89%</span>
+      <span style="background:#F5E7B5;color:#8A6A10;">70–89%</span>
       <span style="background:#FBF3E0;color:#C49A3C;">50–69%</span>
       <span style="background:#F6D9D9;color:#9B3B3B;">25–49%</span>
       <span style="background:#F0C8C8;color:#8B2B2B;">&lt; 25%</span>
