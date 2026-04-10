@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import streamlit.components.v1 as components
 from pathlib import Path
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -100,25 +101,50 @@ def apply_base(fig, h=300, legend_h=True):
         )
     return fig
 
+components.html(
+    """
+    <script>
+    (function() {
+      const doc = window.parent.document;
+      const app = doc.querySelector('.stApp') || doc.body;
+      const styles = window.parent.getComputedStyle(app);
+      const root = doc.documentElement;
+
+      const read = (name, fallback) => {
+        const value = (styles.getPropertyValue(name) || '').trim();
+        return value || fallback;
+      };
+
+      root.style.setProperty('--app-primary', read('--primary-color', '#4A7BA8'));
+      root.style.setProperty('--app-bg', read('--background-color', styles.backgroundColor || '#F6F8FB'));
+      root.style.setProperty('--app-surface', read('--secondary-background-color', '#FFFFFF'));
+      root.style.setProperty('--app-text', read('--text-color', styles.color || '#111827'));
+    })();
+    </script>
+    """,
+    height=0,
+    width=0,
+)
+
 # ── CSS ────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
-.stApp,[data-testid="stAppViewContainer"],[data-testid="stAppViewContainer"]>.main {
-  --bg: var(--background-color, #F6F8FB);
-  --surface: var(--secondary-background-color, #FFFFFF);
-  --surface-alt: color-mix(in srgb, var(--secondary-background-color, #FFFFFF) 88%, var(--background-color, #F6F8FB));
-  --text: var(--text-color, #111827);
-  --muted: color-mix(in srgb, var(--text-color, #111827) 56%, transparent);
-  --border: color-mix(in srgb, var(--text-color, #111827) 12%, var(--background-color, #F6F8FB));
-  --grid: color-mix(in srgb, var(--text-color, #111827) 8%, var(--background-color, #F6F8FB));
-  --hover-bg: color-mix(in srgb, var(--secondary-background-color, #FFFFFF) 90%, var(--background-color, #F6F8FB));
-  --accent: var(--primary-color, #4A7BA8);
-  --accent-soft: color-mix(in srgb, var(--primary-color, #4A7BA8) 16%, var(--secondary-background-color, #FFFFFF));
-  --accent-border: color-mix(in srgb, var(--primary-color, #4A7BA8) 30%, var(--secondary-background-color, #FFFFFF));
-  --input-bg: color-mix(in srgb, var(--secondary-background-color, #FFFFFF) 92%, var(--background-color, #F6F8FB));
+:root {
+  --bg: var(--app-bg, var(--background-color, #F6F8FB));
+  --surface: var(--app-surface, var(--secondary-background-color, #FFFFFF));
+  --surface-alt: color-mix(in srgb, var(--surface) 88%, var(--bg));
+  --text: var(--app-text, var(--text-color, #111827));
+  --muted: color-mix(in srgb, var(--text) 72%, var(--bg));
+  --border: color-mix(in srgb, var(--text) 12%, var(--bg));
+  --grid: color-mix(in srgb, var(--text) 8%, var(--bg));
+  --hover-bg: color-mix(in srgb, var(--surface) 90%, var(--bg));
+  --accent: var(--app-primary, var(--primary-color, #4A7BA8));
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  --accent-border: color-mix(in srgb, var(--accent) 30%, var(--surface));
+  --input-bg: color-mix(in srgb, var(--surface) 92%, var(--bg));
   --focus-shadow: rgba(123,167,212,.16);
-  --scrollbar: color-mix(in srgb, var(--text-color, #111827) 18%, transparent);
+  --scrollbar: color-mix(in srgb, var(--text) 18%, transparent);
   --hm-100-bg: color-mix(in srgb, #6BBF9E 38%, var(--surface));
   --hm-100-text: color-mix(in srgb, #2D6A4F 88%, var(--text));
   --hm-75-bg: color-mix(in srgb, #DDE8B2 50%, var(--surface));
@@ -137,8 +163,8 @@ st.markdown("""
   --badge-incomplete-text: color-mix(in srgb, #C49A3C 88%, var(--text));
   --badge-none-bg: color-mix(in srgb, #D98B8B 18%, var(--surface));
   --badge-none-text: color-mix(in srgb, #B05B5B 88%, var(--text));
-  --badge-plan-bg: color-mix(in srgb, var(--primary-color, #4A7BA8) 14%, var(--surface));
-  --badge-plan-text: color-mix(in srgb, var(--primary-color, #4A7BA8) 84%, var(--text));
+  --badge-plan-bg: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  --badge-plan-text: color-mix(in srgb, var(--accent) 84%, var(--text));
   --ok-bg: color-mix(in srgb, #6BBF9E 14%, var(--surface));
   --ok-border: color-mix(in srgb, #6BBF9E 36%, var(--surface));
   --ok-text: color-mix(in srgb, #3D8B6E 82%, var(--text));
