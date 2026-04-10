@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 from pathlib import Path
 from datetime import datetime
@@ -293,6 +292,17 @@ def render_kpi(col, icon, label, value, sub="", accent="#7BA7D4"):
             st.metric(f"{icon} {label}", value)
         if sub:
             st.caption(sub)
+
+
+def render_native_bar_chart(target, data, **kwargs):
+    try:
+        target.bar_chart(data, **kwargs)
+    except TypeError:
+        fallback_kwargs = {
+            k: v for k, v in kwargs.items()
+            if k not in {"horizontal", "stack", "sort", "x_label", "y_label"}
+        }
+        target.bar_chart(data, **fallback_kwargs)
 
 def section_header(title, subtitle=""):
     subtitle_html = f'<div class="section-sub">{subtitle}</div>' if subtitle else ""
@@ -598,17 +608,19 @@ with tab1:
                        .sort_values().index.tolist())
             pg = ex1.groupby(["Proyecto","Estado"])["Cantidad_num"].count().reset_index()
             pg.columns = ["Proyecto","Estado","n"]
-            fig_proy = px.bar(pg, x="n", y="Proyecto", color="Estado",
-                              orientation="h", barmode="stack",
-                              color_discrete_map=COLORS,
-                              category_orders={"Proyecto": orden,
-                                               "Estado": ["No Realizado","Incompleto","Completo"]})
-            fig_proy.update_traces(hovertemplate="<b>%{y}</b><br>%{data.name}: %{x}<extra></extra>",
-                                   marker_line_width=0)
-            apply_base(fig_proy, h=270)
-            fig_proy.update_layout(xaxis=dict(title=""),
-                                   yaxis=dict(title="", gridwidth=0))
-            st.plotly_chart(fig_proy, use_container_width=True, theme="streamlit", config={"displayModeBar": False})
+            proy_chart = (pg.pivot(index="Proyecto", columns="Estado", values="n")
+                            .reindex(columns=["No Realizado", "Incompleto", "Completo"], fill_value=0)
+                            .fillna(0)
+                            .reindex(orden))
+            render_native_bar_chart(
+                st,
+                proy_chart.reset_index(),
+                x="Proyecto",
+                y=["No Realizado", "Incompleto", "Completo"],
+                color=[COLORS["No Realizado"], COLORS["Incompleto"], COLORS["Completo"]],
+                horizontal=True,
+                stack=True,
+            )
         st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Línea temporal ──
@@ -698,28 +710,20 @@ with tab2:
                    }))
                    .reset_index()
                    .sort_values("tasa", ascending=False))
-        fig_tasa = go.Figure(go.Bar(
-            x=t_df["tasa"], y=t_df["Proyecto"],
-            orientation="h",
-            marker_color=[bar_col(t) for t in t_df["tasa"]],
-            marker_line_width=0,
-            text=t_df["tasa"].map(lambda t: f"{t:.1f}%"),
-            textposition="outside",
-            textfont=dict(size=11),
-            customdata=t_df[["comp", "inc", "no_r", "tot"]].values,
-            hovertemplate="<b>%{y}</b><br>Cumplimiento: %{x:.1f}%<br>Completos: %{customdata[0]}<br>Incompletos: %{customdata[1]}<br>No realizados: %{customdata[2]}<br>Total plan meses vencidos: %{customdata[3]}<extra></extra>",
-        ))
-        fig_tasa.add_vline(x=META, line_dash="dot", line_color="#7BA7D4", line_width=1.5,
-                           annotation_text=f"Meta {META}%",
-                           annotation_font_size=10,
-                           annotation_position="top right")
-        apply_base(fig_tasa, h=340, legend_h=False)
-        fig_tasa.update_layout(
-            showlegend=False,
-            xaxis=dict(range=[0,115], ticksuffix="%", title=""),
-            yaxis=dict(gridwidth=0, title=""),
+        tasa_chart = t_df.copy()
+        tasa_chart["Bajo meta"] = tasa_chart["tasa"].where(tasa_chart["tasa"] < META * 0.6, 0.0)
+        tasa_chart["En riesgo"] = tasa_chart["tasa"].where((tasa_chart["tasa"] >= META * 0.6) & (tasa_chart["tasa"] < META), 0.0)
+        tasa_chart["Cumple meta"] = tasa_chart["tasa"].where(tasa_chart["tasa"] >= META, 0.0)
+        st.caption(f"Meta de referencia: {META}%")
+        render_native_bar_chart(
+            st,
+            tasa_chart,
+            x="Proyecto",
+            y=["Bajo meta", "En riesgo", "Cumple meta"],
+            color=[COLORS["No Realizado"], COLORS["Incompleto"], COLORS["Completo"]],
+            horizontal=True,
+            stack=True,
         )
-        st.plotly_chart(fig_tasa, use_container_width=True, theme="streamlit", config={"displayModeBar": False})
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
