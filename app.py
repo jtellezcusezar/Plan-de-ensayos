@@ -304,6 +304,92 @@ def render_native_bar_chart(target, data, **kwargs):
         }
         target.bar_chart(data, **fallback_kwargs)
 
+
+def render_native_donut_chart(target, data, theta, color, total, title=None,
+                              legend="right", width=None, height=270,
+                              use_container_width=True):
+    color_domain = [estado for estado in COLORS if estado in data[color].tolist()]
+    color_range = [COLORS[estado] for estado in color_domain]
+    chart_data = data.copy()
+    total_label = pd.DataFrame([{
+        "label": f"{int(total):,}",
+        "subtitle": "Total",
+    }])
+    spec = {
+        "layer": [
+            {
+                "mark": {
+                    "type": "arc",
+                    "innerRadius": 58,
+                    "outerRadius": 95,
+                    "cornerRadius": 6,
+                },
+                "encoding": {
+                    "theta": {
+                        "field": theta,
+                        "type": "quantitative",
+                    },
+                    "color": {
+                        "field": color,
+                        "type": "nominal",
+                        "scale": {
+                            "domain": color_domain,
+                            "range": color_range,
+                        },
+                        "legend": {
+                            "orient": legend,
+                            "title": None,
+                            "labelFontSize": 12,
+                        } if legend else None,
+                    },
+                    "tooltip": [
+                        {"field": color, "type": "nominal", "title": "Estado"},
+                        {"field": theta, "type": "quantitative", "title": "Total"},
+                    ],
+                },
+            },
+            {
+                "data": {"values": total_label.to_dict("records")},
+                "mark": {
+                    "type": "text",
+                    "font": "Inter",
+                    "fontSize": 22,
+                    "fontWeight": 700,
+                },
+                "encoding": {
+                    "text": {"field": "label"},
+                    "x": {"value": 110},
+                    "y": {"value": 100},
+                },
+            },
+            {
+                "data": {"values": total_label.to_dict("records")},
+                "mark": {
+                    "type": "text",
+                    "font": "Inter",
+                    "fontSize": 11,
+                    "opacity": 0.75,
+                },
+                "encoding": {
+                    "text": {"field": "subtitle"},
+                    "x": {"value": 110},
+                    "y": {"value": 120},
+                },
+            },
+        ],
+        "view": {"stroke": None},
+        "title": title,
+    }
+    if width is not None:
+        spec["width"] = width
+    if height is not None:
+        spec["height"] = height
+
+    try:
+        target.vega_lite_chart(chart_data, spec, use_container_width=use_container_width)
+    except TypeError:
+        target.vega_lite_chart(chart_data, spec)
+
 def section_header(title, subtitle=""):
     subtitle_html = f'<div class="section-sub">{subtitle}</div>' if subtitle else ""
     return (
@@ -577,24 +663,16 @@ with tab1:
         st.markdown('<div class="dash-card">', unsafe_allow_html=True)
         ec = df1["Estado"].value_counts().reset_index()
         ec.columns = ["Estado","n"]
-        ec["C"] = ec["Estado"].map(COLORS)
-        fig_donut = go.Figure(go.Pie(
-            labels=ec["Estado"], values=ec["n"], hole=0.58,
-            marker_colors=ec["C"].tolist(),
-            textinfo="percent",
-            textposition="outside",
-            insidetextorientation="horizontal",
-            hovertemplate="<b>%{label}</b><br>%{value:,} · %{percent}<extra></extra>",
-        ))
-        # Aplicar layout sin legend primero, luego agregar legend vertical y annotations
-        apply_base(fig_donut, h=270, legend_h=False)
-        fig_donut.update_layout(
-            showlegend=True,
-            legend=dict(orientation="v", x=1.02, y=0.5, font=dict(size=12)),
-            annotations=[dict(text=f"<b>{len(df1):,}</b>", x=0.5, y=0.5,
-                              font_size=16, showarrow=False)],
+        render_native_donut_chart(
+            st,
+            ec,
+            theta="n",
+            color="Estado",
+            total=len(df1),
+            legend="right",
+            height=270,
+            use_container_width=True,
         )
-        st.plotly_chart(fig_donut, use_container_width=True, theme="streamlit", config={"displayModeBar": False})
         st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Barras por proyecto ──
