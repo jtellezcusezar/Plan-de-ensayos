@@ -113,8 +113,8 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif!important;}
 .stTabs [aria-selected="true"]{color:#4A7BA8!important;border-bottom-color:#4A7BA8!important;}
 .stTabs [data-baseweb="tab-panel"]{padding-top:24px;}
 .stTabs [data-baseweb="tab-highlight"]{display:none;}
-.filter-bar{background:#fff;border:1px solid #E5E9F0;border-radius:14px;padding:14px 20px 18px;margin-bottom:20px;box-shadow:0 1px 4px rgba(15,23,42,.05);}
-.filter-bar-title{font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #F3F4F6;}
+.filter-bar{margin-bottom:16px;}
+.filter-bar-title{display:none;}
 div[data-testid="stSelectbox"]>label{font-size:11px!important;font-weight:600!important;color:#6B7280!important;text-transform:uppercase!important;letter-spacing:.05em!important;margin-bottom:4px!important;}
 div[data-testid="stSelectbox"]>div>div{border-radius:10px!important;border:1.5px solid #E5E9F0!important;background:#FAFBFC!important;font-size:13px!important;color:#374151!important;}
 div[data-testid="stSelectbox"]>div>div:focus-within{border-color:#7BA7D4!important;box-shadow:0 0 0 3px rgba(123,167,212,.12)!important;}
@@ -149,7 +149,7 @@ div[data-testid="stTextInput"]>div>input:focus{border-color:#7BA7D4!important;bo
 .hm-table td{padding:8px;text-align:center;font-weight:700;font-family:'DM Mono',monospace;border-bottom:1px solid #F3F4F6;}
 .hm-table td.hmpn{text-align:left;font-family:'Inter',sans-serif;font-size:12px;padding-left:16px;color:#111827;font-weight:600;}
 .hm-table tr:last-child td{border-bottom:none;}.hm-table tr:hover td{filter:brightness(.97);}
-.h100{background:#B8E4D0;color:#2D6A4F;}.h75{background:#D5EFE3;color:#3D8B6E;}.h50{background:#FBEFD4;color:#9A6F1E;}.h25{background:#F6D9D9;color:#9B3B3B;}.h0{background:#F0C8C8;color:#8B2B2B;}.hna{background:#F8F9FB;color:#C4CAD4;font-family:'Inter',sans-serif;font-weight:500;font-size:11px;}
+.h100{background:#B8E4D0;color:#2D6A4F;}.h75{background:#F1D98B;color:#8A6500;}.h50{background:#FBEFD4;color:#9A6F1E;}.h25{background:#F6D9D9;color:#9B3B3B;}.h0{background:#F0C8C8;color:#8B2B2B;}.hna{background:#F8F9FB;color:#C4CAD4;font-family:'Inter',sans-serif;font-weight:500;font-size:11px;}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
 .bc{background:#E4F4EE;color:#3D8B6E;}.bi{background:#FBF3E0;color:#C49A3C;}.bn{background:#F8E8E8;color:#B05B5B;}.bp{background:#EEF3FA;color:#4A7BA8;}
 .rt{width:100%;border-collapse:collapse;font-size:13px;}
@@ -485,12 +485,10 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 # TAB 1
 # ══════════════════════════════════════════════════════════════════════════════
 with tab1:
-    st.markdown('<div class="filter-bar"><div class="filter-bar-title">⚙ Filtros</div>', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
     sel_proy  = c1.selectbox("Proyecto", ALL_P,  key="t1p")
     sel_etapa = c2.selectbox("Etapa",    ALL_E,  key="t1e")
     sel_mes   = c3.selectbox("Mes",      ALL_M,  key="t1m")
-    st.markdown('</div>', unsafe_allow_html=True)
 
     df1 = filt(filt(filt_mes(df_full, sel_mes), "ETAPA", sel_etapa, "Todas"), "Proyecto", sel_proy, "Todos")
 
@@ -592,12 +590,10 @@ with tab1:
 # TAB 2
 # ══════════════════════════════════════════════════════════════════════════════
 with tab2:
-    st.markdown('<div class="filter-bar"><div class="filter-bar-title">⚙ Filtros</div>', unsafe_allow_html=True)
     f2a, f2b, f2c = st.columns(3)
     sel2_proy  = f2a.selectbox("Proyecto", ALL_P,   key="t2p")
     sel2_etapa = f2b.selectbox("Etapa",    ALL_E,   key="t2e")
     sel2_mat   = f2c.selectbox("Material", ALL_MAT, key="t2m")
-    st.markdown('</div>', unsafe_allow_html=True)
 
     df2 = filt(filt(filt(df_full, "Proyecto", sel2_proy, "Todos"), "ETAPA", sel2_etapa, "Todas"), "MATERIAL", sel2_mat, "Todos")
     ex2 = df2[df2["EsEjecutado"]].copy()
@@ -671,11 +667,9 @@ with tab2:
 # TAB 3
 # ══════════════════════════════════════════════════════════════════════════════
 with tab3:
-    st.markdown('<div class="filter-bar"><div class="filter-bar-title">⚙ Filtros</div>', unsafe_allow_html=True)
     f3a, f3b = st.columns([2, 1])
     sel3_proy = f3a.selectbox("Proyecto",      ALL_P,  key="t3p")
     sel3_mes  = f3b.selectbox("Mes con datos", ["Todos"] + [MESES[m] for m in meses_con_datos], key="t3m")
-    st.markdown('</div>', unsafe_allow_html=True)
 
     df3 = filt(df_full, "Proyecto", sel3_proy, "Todos")
     sm3 = meses_con_datos if sel3_mes == "Todos" else [k for k, v in MESES.items() if v == sel3_mes]
@@ -764,7 +758,6 @@ with tab4:
     st.markdown("Filtra y encuentra exactamente qué ensayos aplican según proyecto, mes y material.")
     st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
-    st.markdown('<div class="filter-bar"><div class="filter-bar-title">⚙ Filtros de búsqueda</div>', unsafe_allow_html=True)
     q1, q2, q3 = st.columns(3)
     sel4_proy  = q1.selectbox("Proyecto",  ALL_P,   key="t4p")
     sel4_etapa = q1.selectbox("Etapa",     ALL_E,   key="t4e")
@@ -773,7 +766,6 @@ with tab4:
     sel4_est   = q3.selectbox("Estado",    ALL_EST, key="t4est")
     buscar     = q3.text_input("🔎 Buscar por nombre de ensayo",
                                placeholder="Ej: resistencia, fraguado, granulometría...")
-    st.markdown('</div>', unsafe_allow_html=True)
 
     df4 = filt(filt(filt_mes(filt(filt(filt(df_full,
         "Proyecto", sel4_proy, "Todos"),
@@ -836,12 +828,10 @@ with tab5:
     st.markdown("Consulta el avance mensual de controles por ciudad, proyecto y tipo de control.")
     st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
-    st.markdown('<div class="filter-bar"><div class="filter-bar-title">⚙ Filtros</div>', unsafe_allow_html=True)
     c5a, c5b, c5c = st.columns(3)
     sel5_ciud = c5a.selectbox("Ciudad", ALL_CIUD, key="t5c")
     sel5_proy = c5b.selectbox("Proyecto", ALL_PC, key="t5p")
     sel5_area = c5c.selectbox("Control", CONTROL_AREA_OPTIONS, index=0, key="t5a")
-    st.markdown('</div>', unsafe_allow_html=True)
 
     df5_ctrl = df_controles.copy()
     df5_ens = df_full.copy()
