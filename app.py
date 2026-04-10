@@ -43,8 +43,8 @@ PRODUCTO_TERMINADO_ENSAYOS = [
 ]
 
 PRODUCTO_TERMINADO_CONTROLES = [
-    ("Torre", "estructura", "Control instalaciones Sanitarias"),
-    ("Torre", "estructura", "Control Instalaciones Sanitarias (Flujo)"),
+    ("Torre", "Estructura", "Control Instalaciones Sanitarias (Estanqueidad)"),
+    ("Torre", "Estructura", "Control Instalaciones Sanitarias (Flujo)"),
     ("Torre", "Obra gris y obra blanca", "Acta de liberacion Pañete"),
     ("Torre", "Obra gris y obra blanca", "Acta de liberacion Mamposteria"),
     ("Torre", "Obra gris y obra blanca", "Afinados de pisos"),
