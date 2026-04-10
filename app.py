@@ -171,17 +171,8 @@ THEMES = {
 }
 
 if "theme_mode" not in st.session_state:
-    st.session_state["theme_mode"] = "Claro"
-
-theme_cols = st.columns([8, 1.5])
-with theme_cols[1]:
-    st.radio(
-        "Tema",
-        ["Claro", "Oscuro"],
-        key="theme_mode",
-        horizontal=True,
-        label_visibility="collapsed",
-    )
+    base_theme = (st.get_option("theme.base") or "light").lower()
+    st.session_state["theme_mode"] = "Oscuro" if base_theme == "dark" else "Claro"
 
 THEME = THEMES[st.session_state["theme_mode"]]
 
@@ -236,7 +227,6 @@ body,.stApp,[data-testid="stAppViewContainer"],[data-testid="stAppViewContainer"
 .block-container{{padding-top:0!important;max-width:100%!important;padding-left:2rem!important;padding-right:2rem!important;}}
 [data-testid="stSidebar"]{{display:none;}}
 [data-testid="stToolbar"]{{background:transparent!important;}}
-[data-testid="stRadio"] label,[data-testid="stRadio"] div[role="radiogroup"] label p{{color:var(--text)!important;}}
 .app-header{{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 32px;display:flex;align-items:center;justify-content:space-between;margin:-1rem -2rem 0 -2rem;position:sticky;top:0;z-index:100;box-shadow:var(--header-shadow);}}
 .logo-box{{width:36px;height:36px;background:linear-gradient(135deg,#7BA7D4,#4A7BA8);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;}}
 .app-title{{font-size:16px;font-weight:700;color:var(--text);margin:0;}}
@@ -637,6 +627,7 @@ def build_heatmap_rows(df_ctrl, df_ens, area):
 
 # ── HEADER ─────────────────────────────────────────────────────────────────────
 st.markdown(f"""
+<div style="height:28px"></div>
 <div class="app-header">
   <div style="display:flex;align-items:center;gap:12px;">
     <div class="logo-box">🏗️</div>
