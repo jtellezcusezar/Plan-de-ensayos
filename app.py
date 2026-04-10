@@ -311,6 +311,7 @@ def render_native_donut_chart(target, data, theta, color, total, title=None,
     color_domain = [estado for estado in COLORS if estado in data[color].tolist()]
     color_range = [COLORS[estado] for estado in color_domain]
     chart_data = data.copy()
+    chart_data["EtiquetaValor"] = chart_data[theta].map(lambda v: f"{int(v):,}")
     spec = {
         "layer": [
             {
@@ -342,6 +343,25 @@ def render_native_donut_chart(target, data, theta, color, total, title=None,
                         {"field": color, "type": "nominal", "title": "Estado"},
                         {"field": theta, "type": "quantitative", "title": "Total"},
                     ],
+                },
+            },
+            {
+                "mark": {
+                    "type": "text",
+                    "radius": 118,
+                    "font": "Inter",
+                    "fontSize": 11,
+                    "fontWeight": 600,
+                },
+                "encoding": {
+                    "theta": {
+                        "field": theta,
+                        "type": "quantitative",
+                    },
+                    "text": {
+                        "field": "EtiquetaValor",
+                        "type": "nominal",
+                    },
                 },
             },
         ],
@@ -637,7 +657,6 @@ with tab1:
                 st.metric("Total registros", f"{len(df1):,}", border=True)
             except TypeError:
                 st.metric("Total registros", f"{len(df1):,}")
-            st.caption("Valor nativo, adapta el color al tema activo.")
         render_native_donut_chart(
             donut_view,
             ec,
