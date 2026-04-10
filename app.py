@@ -104,7 +104,7 @@ def apply_base(fig, h=300, legend_h=True):
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
-:root {
+.stApp,[data-testid="stAppViewContainer"],[data-testid="stAppViewContainer"]>.main {
   --bg: var(--background-color, #F6F8FB);
   --surface: var(--secondary-background-color, #FFFFFF);
   --surface-alt: color-mix(in srgb, var(--secondary-background-color, #FFFFFF) 88%, var(--background-color, #F6F8FB));
