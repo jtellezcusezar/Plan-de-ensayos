@@ -128,7 +128,10 @@ div[data-testid="stTextInput"]>div>input:focus{border-color:#7BA7D4!important;bo
 .kpi-icon{font-size:20px;margin-bottom:8px;}.kpi-label{font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
 .kpi-value{font-size:28px;font-weight:800;line-height:1;font-family:'DM Mono',monospace;margin-bottom:4px;}.kpi-sub{font-size:11px;color:#9CA3AF;}
 .kp-blue .kpi-value{color:#4A7BA8;}.kp-green .kpi-value{color:#3D8B6E;}.kp-yellow .kpi-value{color:#C49A3C;}.kp-red .kpi-value{color:#B05B5B;}.kp-slate .kpi-value{color:#4A7BA8;}
-.dash-card{background:#fff;border:1px solid #E5E9F0;border-radius:14px;padding:20px 22px;box-shadow:0 1px 4px rgba(15,23,42,.05);margin-bottom:18px;}
+.section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:0 0 10px 0;padding-bottom:8px;border-bottom:1px solid #E5E9F0;}
+.section-title{font-size:15px;font-weight:700;color:#111827;line-height:1.2;margin:0;}
+.section-sub{font-size:11px;color:#9CA3AF;line-height:1.4;text-align:right;max-width:60%;margin:0;}
+.dash-card{background:transparent;border:none;border-radius:0;padding:0;margin-bottom:18px;box-shadow:none;}
 .card-title{font-size:14px;font-weight:700;color:#111827;margin-bottom:2px;}.card-sub{font-size:11px;color:#9CA3AF;margin-bottom:14px;}
 .info-note{padding:9px 14px;background:#EEF3FA;border:1px solid #C8DCF0;border-radius:10px;font-size:12px;color:#4A7BA8;font-weight:500;margin-bottom:18px;}
 .ok-note{padding:9px 14px;background:#E4F4EE;border:1px solid #A8D5BF;border-radius:10px;font-size:12px;color:#3D8B6E;font-weight:500;}
@@ -269,6 +272,15 @@ def kpi(icon, label, value, sub, css):
     return (f'<div class="kpi-card {css}"><div class="kpi-icon">{icon}</div>'
             f'<div class="kpi-label">{label}</div><div class="kpi-value">{value}</div>'
             f'<div class="kpi-sub">{sub}</div></div>')
+
+def section_header(title, subtitle=""):
+    subtitle_html = f'<div class="section-sub">{subtitle}</div>' if subtitle else ""
+    return (
+        f'<div class="section-head">'
+        f'<div class="section-title">{title}</div>'
+        f'{subtitle_html}'
+        f'</div>'
+    )
 
 def get_kpis(df):
     ex   = df[df["EsEjecutado"]]
@@ -509,7 +521,8 @@ with tab1:
     # ── Donut ──
     d1, d2 = st.columns([1, 1.5])
     with d1:
-        st.markdown('<div class="dash-card"><div class="card-title">Distribución por Estado</div><div class="card-sub">Total de registros en el plan</div>', unsafe_allow_html=True)
+        st.markdown(section_header("Distribución por Estado", "Total de registros en el plan"), unsafe_allow_html=True)
+        st.markdown('<div class="dash-card">', unsafe_allow_html=True)
         ec = df1["Estado"].value_counts().reset_index()
         ec.columns = ["Estado","n"]
         ec["C"] = ec["Estado"].map(COLORS)
@@ -534,7 +547,8 @@ with tab1:
 
     # ── Barras por proyecto ──
     with d2:
-        st.markdown('<div class="dash-card"><div class="card-title">Avance por Proyecto</div><div class="card-sub">Proyectos con ensayos ejecutados · ordenado por tasa de cumplimiento</div>', unsafe_allow_html=True)
+        st.markdown(section_header("Avance por Proyecto", "Proyectos con ensayos ejecutados · ordenado por tasa de cumplimiento"), unsafe_allow_html=True)
+        st.markdown('<div class="dash-card">', unsafe_allow_html=True)
         ex1 = df1[df1["EsEjecutado"] & (df1["Estado"] != "Planeado")]
         if not ex1.empty:
             orden = (ex1.groupby("Proyecto")
@@ -556,7 +570,8 @@ with tab1:
         st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Línea temporal ──
-    st.markdown('<div class="dash-card"><div class="card-title">Ensayos por Mes — 2026</div><div class="card-sub">Líneas sólidas = ejecutados por estado · Punteada = total planeado del mes · Curva suavizada</div>', unsafe_allow_html=True)
+    st.markdown(section_header("Ensayos por Mes — 2026", "Líneas sólidas = ejecutados por estado · Punteada = total planeado del mes · Curva suavizada"), unsafe_allow_html=True)
+    st.markdown('<div class="dash-card">', unsafe_allow_html=True)
     mp = (df1.groupby("Mes").size()
             .reindex(range(1,13), fill_value=0).reset_index())
     mp.columns = ["Mes","n"]
@@ -599,7 +614,8 @@ with tab2:
     ex2 = df2[df2["EsEjecutado"]].copy()
 
     # ── Heatmap ──
-    st.markdown('<div class="dash-card"><div class="card-title">Heatmap de Cumplimiento — Proyecto × Mes</div><div class="card-sub">Tasa = promedio de valores ejecutados (0, 0.5, 1). "Plan." = sin datos ejecutados ese mes.</div>', unsafe_allow_html=True)
+    st.markdown(section_header('Heatmap de Cumplimiento — Proyecto × Mes', 'Tasa = promedio de valores ejecutados (0, 0.5, 1). "Plan." = sin datos ejecutados ese mes.'), unsafe_allow_html=True)
+    st.markdown('<div class="dash-card">', unsafe_allow_html=True)
     st.markdown(heatmap_legend(), unsafe_allow_html=True)
 
     rows_hm = []
@@ -626,7 +642,8 @@ with tab2:
     st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Tasa por proyecto ──
-    st.markdown(f'<div class="dash-card"><div class="card-title">Tasa de Cumplimiento por Proyecto</div><div class="card-sub">% de completos sobre el total planeado en meses vencidos ({meses_vencidos_label}) · Meta: {META}%</div>', unsafe_allow_html=True)
+    st.markdown(section_header("Tasa de Cumplimiento por Proyecto", f"% de completos sobre el total planeado en meses vencidos ({meses_vencidos_label}) · Meta: {META}%"), unsafe_allow_html=True)
+    st.markdown('<div class="dash-card">', unsafe_allow_html=True)
     if not df2.empty:
         t_df = (df2.groupby("Proyecto")
                    .apply(lambda g: pd.Series({
@@ -695,7 +712,8 @@ with tab3:
         unsafe_allow_html=True)
 
     # Área acumulada
-    st.markdown('<div class="dash-card"><div class="card-title">Evolución Acumulada por Estado</div><div class="card-sub">Progresión mensual · curvas suavizadas</div>', unsafe_allow_html=True)
+    st.markdown(section_header("Evolución Acumulada por Estado", "Progresión mensual · curvas suavizadas"), unsafe_allow_html=True)
+    st.markdown('<div class="dash-card">', unsafe_allow_html=True)
     rows_a = []
     for m in sorted(sm3):
         sub_m = df3[df3["EsEjecutado"] & (df3["Mes"] == m)]
@@ -725,7 +743,8 @@ with tab3:
     st.markdown('</div>', unsafe_allow_html=True)
 
     # Tabla críticos
-    st.markdown('<div class="dash-card"><div class="card-title">🚨 Ensayos Críticos — No Realizados</div><div class="card-sub">Ensayos con valor = 0 en el período analizado</div>', unsafe_allow_html=True)
+    st.markdown(section_header("🚨 Ensayos Críticos — No Realizados", "Ensayos con valor = 0 en el período analizado"), unsafe_allow_html=True)
+    st.markdown('<div class="dash-card">', unsafe_allow_html=True)
     crit_df = df3[
         df3["EsEjecutado"] & (df3["Cantidad_num"] == 0) & df3["Mes"].isin(sm3)
     ][["Proyecto","ETAPA","MATERIAL","ENSAYO","NTC","MesNombre","Estado"]].copy()
@@ -792,7 +811,8 @@ with tab4:
     e.markdown(kpi("❌","No Realizados", f"{no4:,}",      "",          "kp-red"),    unsafe_allow_html=True)
 
     st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
-    st.markdown('<div class="dash-card"><div class="card-title">Resultados de la Consulta</div>', unsafe_allow_html=True)
+    st.markdown(section_header("Resultados de la Consulta"), unsafe_allow_html=True)
+    st.markdown('<div class="dash-card">', unsafe_allow_html=True)
 
     if not df4.empty:
         disp = df4[["Proyecto","ETAPA","MATERIAL","ENSAYO","NTC","FRECUENCIA","MesNombre","Estado"]].copy()
@@ -843,7 +863,8 @@ with tab5:
         df5_ens = df5_ens[df5_ens["Proyecto"] == sel5_proy]
 
     title5 = control_area_title(sel5_area)
-    st.markdown(f'<div class="dash-card"><div class="card-title">{title5}</div><div class="card-sub">Promedio mensual con 12 meses fijos. Los registros sin valor no se incluyen en el cálculo.</div>', unsafe_allow_html=True)
+    st.markdown(section_header(title5, "Promedio mensual con 12 meses fijos. Los registros sin valor no se incluyen en el cálculo."), unsafe_allow_html=True)
+    st.markdown('<div class="dash-card">', unsafe_allow_html=True)
     st.markdown(heatmap_legend(), unsafe_allow_html=True)
 
     rows5 = build_heatmap_rows(df5_ctrl, df5_ens, sel5_area)
