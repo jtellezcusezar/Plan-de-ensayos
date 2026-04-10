@@ -264,8 +264,19 @@ ALL_E   = ["Todas"] + sorted(df_full["ETAPA"].unique().tolist())
 ALL_M   = ["Todos"] + list(MESES.values())
 ALL_MAT = ["Todos"] + sorted(df_full["MATERIAL"].unique().tolist())
 ALL_EST = ["Todos"] + list(ESTADO_MAP.values())
-ALL_CIUD = ["Todas"] + sorted(df_controles["Ciudad"].dropna().unique().tolist()) if "Ciudad" in df_controles.columns else ["Todas"]
-ALL_PC = ["Todos"] + sorted(df_controles["Proyecto"].dropna().unique().tolist()) if "Proyecto" in df_controles.columns else ["Todos"]
+all_ciudades = set()
+if "Ciudad" in df_controles.columns:
+    all_ciudades.update(df_controles["Ciudad"].dropna().tolist())
+if "Ciudad" in df_full.columns:
+    all_ciudades.update(df_full["Ciudad"].dropna().tolist())
+ALL_CIUD = ["Todas"] + sorted(all_ciudades)
+
+all_proyectos_controles = set()
+if "Proyecto" in df_controles.columns:
+    all_proyectos_controles.update(df_controles["Proyecto"].dropna().tolist())
+if "Proyecto" in df_full.columns:
+    all_proyectos_controles.update(df_full["Proyecto"].dropna().tolist())
+ALL_PC = ["Todos"] + sorted(all_proyectos_controles)
 
 # ── HELPERS ────────────────────────────────────────────────────────────────────
 def kpi(icon, label, value, sub, css):
