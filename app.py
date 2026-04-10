@@ -65,16 +65,16 @@ COLORS = {
     "No Realizado": "#D98B8B",
 }
 
+# ── PLOTLY LAYOUT BASE ─────────────────────────────────────────────────────────
+# No incluye 'legend' para evitar conflictos al llamar update_layout
 BASE_LAYOUT = dict(
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
     font=dict(family="Inter, sans-serif", color="#272829", size=12),
     margin=dict(t=40, b=10, l=10, r=10),
     hoverlabel=dict(
-        bgcolor="#1E293B",
-        font_color="#F1F5F9",
-        font_size=12,
-        bordercolor="#334155",
+        bgcolor="#1E293B", font_color="#F1F5F9",
+        font_size=12, bordercolor="#334155",
     ),
 )
 
@@ -90,12 +90,7 @@ def apply_base(fig, h=300, legend_h=True):
     )
     if legend_h:
         fig.update_layout(
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                font=dict(size=11),
-            )
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, font=dict(size=11))
         )
     return fig
 
@@ -330,7 +325,7 @@ def heatmap_legend():
       <span style="background:#F4E1A6;color:#A97B12;">50–69%</span>
       <span style="background:#EEC39F;color:#A45724;">25–49%</span>
       <span style="background:#F0C8C8;color:#8B2B2B;">&lt; 25%</span>
-      <span style="background:#F8F9FB;color:#C4CAD4;">Sin datos</span>
+      <span style="background:#F8F9FB;color:#9CA3AF;">Sin datos</span>
       <span style="font-size:11px;color:#9CA3AF;margin-left:4px;">· Meta: {META}%</span>
     </div>"""
 
@@ -509,7 +504,6 @@ def build_heatmap_rows(df_ctrl, df_ens, area):
 
 # ── HEADER ─────────────────────────────────────────────────────────────────────
 st.markdown(f"""
-<div style="height:28px"></div>
 <div class="app-header">
   <div style="display:flex;align-items:center;gap:12px;">
     <div class="logo-box">🏗️</div>
@@ -911,4 +905,3 @@ with tab5:
     else:
         st.info("ℹ️ No se encontraron controles con los filtros aplicados.")
     st.markdown('</div>', unsafe_allow_html=True)
-
