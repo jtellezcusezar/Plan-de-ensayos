@@ -575,6 +575,52 @@ def control_row_label(row):
         return control
     return f"{etapa} - {control}"
 
+
+def build_pending_controls_rows(df_ctrl, proyectos):
+    pending_df = df_ctrl[df_ctrl["Valor_num"].isin([0, 0.5])].copy()
+    rows = []
+
+    for proyecto in proyectos:
+        proy_df = pending_df[pending_df["Proyecto"] == proyecto]
+
+        torre_mask = (
+            (proy_df["Area"] == "Torre") &
+            (proy_df["Etapa"].isin(["Estructura", "Obra gris y Obra blanca"]))
+        )
+        producto_mask = (
+            (proy_df["Area"] == "Torre") &
+            (proy_df["Etapa"] == "Producto terminado")
+        )
+        zonas_mask = proy_df["Area"] == "Zonas comunes"
+
+        def format_controls(subdf):
+            controles = (
+                subdf.apply(control_row_label, axis=1)
+                .dropna()
+                .astype(str)
+                .str.strip()
+            )
+            controles = [c for c in dict.fromkeys(controles.tolist()) if c]
+            if not controles:
+                return '<span style="color:#9CA3AF;">—</span>'
+            return "<br>".join(controles)
+
+        rows.append({
+            "Proyecto": proyecto,
+            "Control de torre": format_controls(proy_df[torre_mask]),
+            "Producto terminado de torres": format_controls(proy_df[producto_mask]),
+            "Control zonas comunes": format_controls(proy_df[zonas_mask]),
+        })
+
+    return [
+        row for row in rows
+        if any(row[col] != '<span style="color:#9CA3AF;">—</span>' for col in [
+            "Control de torre",
+            "Producto terminado de torres",
+            "Control zonas comunes",
+        ])
+    ]
+
 def build_heatmap_rows(df_ctrl, df_ens, area):
     rows = []
     ctrl_filtered = df_ctrl[control_area_mask(df_ctrl, area)].copy()
@@ -1193,4 +1239,42 @@ with tab5:
         render_echarts(heatmap5_option, height=heatmap5_height)
     else:
         st.info("ℹ️ No se encontraron controles con los filtros aplicados.")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown(section_header("Controles pendientes", "Controles con valor 0 o 0,5 agrupados por proyecto"), unsafe_allow_html=True)
+    st.markdown('<div class="dash-card">', unsafe_allow_html=True)
+
+    sel5_pend_mes = st.selectbox("Mes tabla de pendientes", ALL_M, key="t5_pending_mes")
+    df5_pending = df5_ctrl.copy()
+    if sel5_pend_mes != "Todos":
+        df5_pending = df5_pending[df5_pending["Mes"].isin([k for k, v in MESES.items() if v == sel5_pend_mes])]
+
+    proyectos_tabla = sorted(
+        set(df5_pending["Proyecto"].dropna().tolist()) |
+        set(df5_ens["Proyecto"].dropna().tolist())
+    )
+    pending_rows = build_pending_controls_rows(df5_pending, proyectos_tabla)
+
+    if pending_rows:
+        rows_html = "".join(
+            f"<tr>"
+            f"<td>{row['Proyecto']}</td>"
+            f"<td style='white-space:normal;line-height:1.45;'>{row['Control de torre']}</td>"
+            f"<td style='white-space:normal;line-height:1.45;'>{row['Producto terminado de torres']}</td>"
+            f"<td style='white-space:normal;line-height:1.45;'>{row['Control zonas comunes']}</td>"
+            f"</tr>"
+            for row in pending_rows
+        )
+        st.markdown(
+            f'<div style="overflow-x:auto;border-radius:10px;border:1px solid #E5E9F0;">'
+            f'<table class="rt"><thead><tr>'
+            f'<th>Proyecto</th>'
+            f'<th>Control de torre</th>'
+            f'<th>Producto terminado de torres</th>'
+            f'<th>Control zonas comunes</th>'
+            f'</tr></thead><tbody>{rows_html}</tbody></table></div>',
+            unsafe_allow_html=True
+        )
+    else:
+        st.info("ℹ️ No se encontraron controles pendientes con los filtros aplicados.")
     st.markdown('</div>', unsafe_allow_html=True)
