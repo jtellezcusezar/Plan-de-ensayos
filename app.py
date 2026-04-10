@@ -402,6 +402,116 @@ def render_heatmap_table(first_col_label, rows_data):
         f'<tbody>{"".join(body_rows)}</tbody></table></div>'
     )
 
+
+HEATMAP_RANGE_COLORS = {
+    "na": "#F8F9FB",
+    "lt25": "#F0C8C8",
+    "lt50": "#EEC39F",
+    "lt70": "#F4E1A6",
+    "lt90": "#DDE8B2",
+    "gte90": "#B8E4D0",
+}
+
+
+def build_echarts_heatmap_config(rows_data):
+    month_labels = [MESES[m][:3] for m in range(1, 13)] + ["Prom."]
+    col_values = [[] for _ in range(12)]
+    matrix_rows = []
+
+    for row in rows_data:
+        row_vals = [v for v in row["values"] if v is not None]
+        row_avg = round(sum(row_vals) / len(row_vals), 1) if row_vals else None
+        display_values = []
+        titles = row.get("titles", [None] * 12)
+        for idx, val in enumerate(row["values"]):
+            if val is not None:
+                col_values[idx].append(val)
+            display_values.append({"value": val, "title": titles[idx]})
+        display_values.append({"value": row_avg, "title": "Promedio de la fila" if row_avg is not None else None})
+        matrix_rows.append({"label": row["label"], "cells": display_values})
+
+    avg_cells = []
+    avg_row_values = []
+    for idx in range(12):
+        vals = col_values[idx]
+        if vals:
+            avg_val = round(sum(vals) / len(vals), 1)
+            avg_row_values.append(avg_val)
+            avg_cells.append({"value": avg_val, "title": "Promedio de la columna"})
+        else:
+            avg_cells.append({"value": None, "title": None})
+    grand_avg = round(sum(avg_row_values) / len(avg_row_values), 1) if avg_row_values else None
+    avg_cells.append({"value": grand_avg, "title": "Promedio general" if grand_avg is not None else None})
+    matrix_rows.append({"label": "Promedio", "cells": avg_cells})
+
+    data = []
+    y_labels = [row["label"] for row in matrix_rows]
+    for y_idx, row in enumerate(matrix_rows):
+        for x_idx, cell in enumerate(row["cells"]):
+            value = cell["value"]
+            visual_value = -1 if value is None else round(float(value), 1)
+            display_text = "—" if value is None else f"{round(float(value))}%"
+            data.append([x_idx, y_idx, visual_value, display_text, cell["title"] or "Sin datos"])
+
+    option = {
+        "textStyle": {"fontFamily": "Inter, sans-serif"},
+        "tooltip": {
+            "position": "top",
+            "formatter": """function (params) {
+                const raw = params.data;
+                const titulo = raw[4];
+                const valor = raw[3];
+                return '<b>' + params.name + '</b><br/>' + valor + '<br/>' + titulo;
+            }""",
+        },
+        "grid": {"left": 110, "right": 18, "top": 10, "bottom": 20, "containLabel": True},
+        "xAxis": {
+            "type": "category",
+            "data": month_labels,
+            "splitArea": {"show": True},
+            "axisLabel": {"color": "#6B7280", "fontFamily": "Inter, sans-serif", "fontSize": 11},
+            "axisLine": {"lineStyle": {"color": "#E5E7EB"}},
+        },
+        "yAxis": {
+            "type": "category",
+            "data": y_labels,
+            "splitArea": {"show": True},
+            "axisLabel": {"color": "#374151", "fontFamily": "Inter, sans-serif", "fontSize": 11},
+            "axisTick": {"show": False},
+            "axisLine": {"lineStyle": {"color": "#E5E7EB"}},
+        },
+        "visualMap": {
+            "show": False,
+            "min": -1,
+            "max": 100,
+            "dimension": 2,
+            "pieces": [
+                {"value": -1, "color": HEATMAP_RANGE_COLORS["na"]},
+                {"min": 0, "max": 24.999, "color": HEATMAP_RANGE_COLORS["lt25"]},
+                {"min": 25, "max": 49.999, "color": HEATMAP_RANGE_COLORS["lt50"]},
+                {"min": 50, "max": 69.999, "color": HEATMAP_RANGE_COLORS["lt70"]},
+                {"min": 70, "max": 89.999, "color": HEATMAP_RANGE_COLORS["lt90"]},
+                {"min": 90, "max": 100, "color": HEATMAP_RANGE_COLORS["gte90"]},
+            ],
+        },
+        "series": [{
+            "name": "Cumplimiento",
+            "type": "heatmap",
+            "data": data,
+            "label": {
+                "show": True,
+                "formatter": """function (params) { return params.data[3]; }""",
+                "fontFamily": "Inter, sans-serif",
+                "fontSize": 10,
+                "fontWeight": 700,
+                "color": "#374151",
+            },
+            "itemStyle": {"borderColor": "#E5E9F0", "borderWidth": 1},
+            "emphasis": {"itemStyle": {"shadowBlur": 0, "borderColor": "#CBD5E1", "borderWidth": 1}},
+        }],
+    }
+    return option, max(280, 44 + len(y_labels) * 32)
+
 def badge(estado):
     m = {"Completo":("bc","✅"), "Incompleto":("bi","⚠️"),
          "No Realizado":("bn","❌"), "Planeado":("bp","🔵")}
@@ -782,7 +892,8 @@ with tab2:
                 titles.append(f"{cn} compl. · {iN} incompl. · {nn} no-real · Promedio: {prom:.2f}")
         rows_hm.append({"label": p, "values": values, "titles": titles})
 
-    st.markdown(render_heatmap_table("Proyecto", rows_hm), unsafe_allow_html=True)
+    heatmap_option, heatmap_height = build_echarts_heatmap_config(rows_hm)
+    render_echarts(heatmap_option, height=heatmap_height)
     st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Tasa por proyecto ──
@@ -800,28 +911,72 @@ with tab2:
                    }))
                    .reset_index()
                    .sort_values("tasa", ascending=False))
-        fig_tasa = go.Figure(go.Bar(
-            x=t_df["tasa"], y=t_df["Proyecto"],
-            orientation="h",
-            marker_color=[bar_col(t) for t in t_df["tasa"]],
-            marker_line_width=0,
-            text=t_df["tasa"].map(lambda t: f"{t:.1f}%"),
-            textposition="outside",
-            textfont=dict(size=11, color="#6B7280"),
-            customdata=t_df[["comp", "inc", "no_r", "tot"]].values,
-            hovertemplate="<b>%{y}</b><br>Cumplimiento: %{x:.1f}%<br>Completos: %{customdata[0]}<br>Incompletos: %{customdata[1]}<br>No realizados: %{customdata[2]}<br>Total plan meses vencidos: %{customdata[3]}<extra></extra>",
-        ))
-        fig_tasa.add_vline(x=META, line_dash="dot", line_color="#7BA7D4", line_width=1.5,
-                           annotation_text=f"Meta {META}%",
-                           annotation_font_color="#7BA7D4", annotation_font_size=10,
-                           annotation_position="top right")
-        apply_base(fig_tasa, h=340, legend_h=False)
-        fig_tasa.update_layout(
-            showlegend=False,
-            xaxis=dict(range=[0,115], gridcolor="#F3F4F6", ticksuffix="%", title=""),
-            yaxis=dict(gridwidth=0, title=""),
-        )
-        st.plotly_chart(fig_tasa, use_container_width=True, config={"displayModeBar": False})
+        tasa_option = {
+            "textStyle": {"fontFamily": "Inter, sans-serif"},
+            "tooltip": {
+                "trigger": "item",
+                "formatter": """function (params) {
+                    const d = params.data;
+                    return '<b>' + d.proyecto + '</b><br/>Cumplimiento: ' + d.value.toFixed(1) + '%' +
+                           '<br/>Completos: ' + d.comp +
+                           '<br/>Incompletos: ' + d.inc +
+                           '<br/>No realizados: ' + d.no_r +
+                           '<br/>Total plan meses vencidos: ' + d.tot;
+                }""",
+            },
+            "grid": {"left": 120, "right": 35, "top": 24, "bottom": 20, "containLabel": True},
+            "xAxis": {
+                "type": "value",
+                "min": 0,
+                "max": 115,
+                "axisLabel": {"formatter": "{value}%", "color": "#6B7280", "fontFamily": "Inter, sans-serif"},
+                "splitLine": {"lineStyle": {"color": "#F3F4F6"}},
+            },
+            "yAxis": {
+                "type": "category",
+                "data": t_df["Proyecto"].tolist(),
+                "axisLabel": {"color": "#374151", "fontFamily": "Inter, sans-serif"},
+                "axisTick": {"show": False},
+            },
+            "series": [{
+                "type": "bar",
+                "data": [
+                    {
+                        "value": float(row.tasa),
+                        "proyecto": row.Proyecto,
+                        "comp": int(row.comp),
+                        "inc": int(row.inc),
+                        "no_r": int(row.no_r),
+                        "tot": int(row.tot),
+                        "itemStyle": {"color": bar_col(row.tasa)},
+                    }
+                    for _, row in t_df.iterrows()
+                ],
+                "barWidth": 18,
+                "label": {
+                    "show": True,
+                    "position": "right",
+                    "formatter": "{c}%",
+                    "fontFamily": "Inter, sans-serif",
+                    "fontSize": 11,
+                    "color": "#6B7280",
+                },
+                "markLine": {
+                    "silent": True,
+                    "symbol": "none",
+                    "lineStyle": {"type": "dashed", "color": COLORS["Planeado"], "width": 1.5},
+                    "label": {
+                        "show": True,
+                        "formatter": f"Meta {META}%",
+                        "color": COLORS["Planeado"],
+                        "fontFamily": "Inter, sans-serif",
+                        "fontSize": 10,
+                    },
+                    "data": [{"xAxis": META}],
+                },
+            }],
+        }
+        render_echarts(tasa_option, height=max(320, 70 + len(t_df) * 28))
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
