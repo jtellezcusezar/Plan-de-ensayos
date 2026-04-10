@@ -295,6 +295,66 @@ def hm_cls(t):
     if t >= 25: return "h25"
     return "h0"
 
+def heatmap_legend():
+    return f"""<div class="hml">
+      <span style="background:#B8E4D0;color:#2D6A4F;">≥ 90%</span>
+      <span style="background:#D5EFE3;color:#3D8B6E;">70–89%</span>
+      <span style="background:#FBEFD4;color:#9A6F1E;">50–69%</span>
+      <span style="background:#F6D9D9;color:#9B3B3B;">25–49%</span>
+      <span style="background:#F0C8C8;color:#8B2B2B;">&lt; 25%</span>
+      <span style="background:#F8F9FB;color:#9CA3AF;">Sin datos</span>
+      <span style="font-size:11px;color:#9CA3AF;margin-left:4px;">· Meta: {META}%</span>
+    </div>"""
+
+def render_heatmap_table(first_col_label, rows_data):
+    col_values = {m: [] for m in range(12)}
+    body_rows = []
+
+    for row in rows_data:
+        row_vals = [v for v in row["values"] if v is not None]
+        row_avg = round(sum(row_vals) / len(row_vals), 1) if row_vals else None
+        row_html = [f'<tr><td class="hmpn">{row["label"]}</td>']
+        for idx, val in enumerate(row["values"]):
+            if val is None:
+                row_html.append('<td class="hna">—</td>')
+            else:
+                col_values[idx].append(val)
+                title = row.get("titles", [None] * 12)[idx]
+                title_attr = f' title="{title}"' if title else ""
+                row_html.append(f'<td class="{hm_cls(val)}"{title_attr}>{val:.0f}%</td>')
+        if row_avg is None:
+            row_html.append('<td class="hna"><strong>—</strong></td>')
+        else:
+            row_html.append(f'<td class="{hm_cls(row_avg)}" title="Promedio de la fila"><strong>{row_avg:.0f}%</strong></td>')
+        row_html.append("</tr>")
+        body_rows.append("".join(row_html))
+
+    avg_row = ['<tr><td class="hmpn"><strong>Promedio</strong></td>']
+    avg_row_values = []
+    for idx in range(12):
+        vals = col_values[idx]
+        if vals:
+            avg_val = round(sum(vals) / len(vals), 1)
+            avg_row_values.append(avg_val)
+            avg_row.append(f'<td class="{hm_cls(avg_val)}" title="Promedio de la columna"><strong>{avg_val:.0f}%</strong></td>')
+        else:
+            avg_row.append('<td class="hna"><strong>—</strong></td>')
+    grand_vals = [v for v in avg_row_values if v is not None]
+    if grand_vals:
+        grand_avg = round(sum(grand_vals) / len(grand_vals), 1)
+        avg_row.append(f'<td class="{hm_cls(grand_avg)}" title="Promedio general"><strong>{grand_avg:.0f}%</strong></td>')
+    else:
+        avg_row.append('<td class="hna"><strong>—</strong></td>')
+    avg_row.append("</tr>")
+    body_rows.append("".join(avg_row))
+
+    ths = "".join(f"<th>{MESES[m][:3]}</th>" for m in range(1, 13))
+    ths += "<th>Prom.</th>"
+    return (
+        f'<div class="hm-wrap"><table class="hm-table"><thead><tr><th class="hmp">{first_col_label}</th>{ths}</tr></thead>'
+        f'<tbody>{"".join(body_rows)}</tbody></table></div>'
+    )
+
 def badge(estado):
     m = {"Completo":("bc","✅"), "Incompleto":("bi","⚠️"),
          "No Realizado":("bn","❌"), "Planeado":("bp","🔵")}
@@ -346,7 +406,6 @@ def build_heatmap_rows(df_ctrl, df_ens, area):
     )
 
     for proyecto in proyectos:
-        row_html = [f'<tr><td class="hmpn">{proyecto}</td>']
         ctrl_proy = ctrl_filtered[ctrl_filtered["Proyecto"] == proyecto]
         ens_parts = []
         ctrl_parts = []
@@ -370,6 +429,8 @@ def build_heatmap_rows(df_ctrl, df_ens, area):
                 ctrl_parts.append(df_ctrl.loc[mask, ["Mes", "Valor_num"]])
 
         extras = pd.concat(ens_parts + ctrl_parts, ignore_index=True) if (ens_parts or ctrl_parts) else pd.DataFrame(columns=["Mes", "Valor_num"])
+        values = []
+        titles = []
 
         for m in range(1, 13):
             vals_ctrl = ctrl_proy.loc[ctrl_proy["Mes"] == m, "Valor_num"].dropna()
@@ -380,17 +441,20 @@ def build_heatmap_rows(df_ctrl, df_ens, area):
                 parsed_vals = [parse_text_value(v) for v in raw_vals]
                 parsed_vals = [v for v in parsed_vals if v is not None]
                 if not parsed_vals:
-                    row_html.append('<td class="hna">—</td>')
+                    values.append(None)
+                    titles.append(None)
                     continue
                 t = round(parsed_vals[-1], 1)
-                row_html.append(f'<td class="{hm_cls(t)}" title="Valor registrado">{t:.0f}%</td>')
+                values.append(t)
+                titles.append("Valor registrado")
             elif vals.empty:
-                row_html.append('<td class="hna">—</td>')
+                values.append(None)
+                titles.append(None)
             else:
                 t = round(vals.mean() * 100, 1)
-                row_html.append(f'<td class="{hm_cls(t)}" title="Promedio de {len(vals)} valores">{t:.0f}%</td>')
-        row_html.append("</tr>")
-        rows.append("".join(row_html))
+                values.append(t)
+                titles.append(f"Promedio de {len(vals)} valores")
+        rows.append({"label": proyecto, "values": values, "titles": titles})
 
     return rows
 
@@ -540,52 +604,29 @@ with tab2:
 
     # ── Heatmap ──
     st.markdown('<div class="dash-card"><div class="card-title">Heatmap de Cumplimiento — Proyecto × Mes</div><div class="card-sub">Tasa = promedio de valores ejecutados (0, 0.5, 1). "Plan." = sin datos ejecutados ese mes.</div>', unsafe_allow_html=True)
-    st.markdown(f"""<div class="hml">
-      <span style="background:#B8E4D0;color:#2D6A4F;">≥ 90%</span>
-      <span style="background:#D5EFE3;color:#3D8B6E;">70–89%</span>
-      <span style="background:#FBEFD4;color:#9A6F1E;">50–69%</span>
-      <span style="background:#F6D9D9;color:#9B3B3B;">25–49%</span>
-      <span style="background:#F0C8C8;color:#8B2B2B;">&lt; 25%</span>
-      <span style="background:#F8F9FB;color:#9CA3AF;">Sin datos</span>
-      <span style="font-size:11px;color:#9CA3AF;margin-left:4px;">· Meta: {META}%</span>
-    </div>""", unsafe_allow_html=True)
+    st.markdown(heatmap_legend(), unsafe_allow_html=True)
 
     rows_hm = []
-    totales_hm = {m: [] for m in range(1, 13)}
     for p in sorted(df2["Proyecto"].unique()):
-        r = f'<tr><td class="hmpn">{p}</td>'
+        values = []
+        titles = []
         for m in range(1, 13):
             sub_hm = ex2[(ex2["Proyecto"]==p) & (ex2["Mes"]==m)]
             if len(sub_hm) == 0:
                 has_plan = len(df2[(df2["Proyecto"]==p) & (df2["Mes"]==m) & (df2["Cantidad"]=="*")]) > 0
-                r += '<td class="hna">Plan.</td>' if has_plan else '<td class="hna">—</td>'
+                values.append(None)
+                titles.append("Plan." if has_plan else None)
             else:
                 cn = int((sub_hm["Cantidad_num"]==1).sum())
                 iN = int((sub_hm["Cantidad_num"]==0.5).sum())
                 nn = int((sub_hm["Cantidad_num"]==0).sum())
                 prom = sub_hm["Cantidad_num"].mean()
                 t = round(prom * 100, 1) if pd.notna(prom) else 0.0
-                totales_hm[m].append(t)
-                r += f'<td class="{hm_cls(t)}" title="{cn} compl. · {iN} incompl. · {nn} no-real · Promedio: {prom:.2f}">{t:.0f}%</td>'
-        r += "</tr>"
-        rows_hm.append(r)
+                values.append(t)
+                titles.append(f"{cn} compl. · {iN} incompl. · {nn} no-real · Promedio: {prom:.2f}")
+        rows_hm.append({"label": p, "values": values, "titles": titles})
 
-    fila_total = '<tr><td class="hmpn"><strong>Total</strong></td>'
-    for m in range(1, 13):
-        vals = totales_hm[m]
-        if vals:
-            t = round(sum(vals) / len(vals), 1)
-            fila_total += f'<td class="{hm_cls(t)}" title="Promedio de {len(vals)} celdas con valor">{t:.0f}%</td>'
-        else:
-            fila_total += '<td class="hna">—</td>'
-    fila_total += "</tr>"
-    rows_hm.append(fila_total)
-
-    ths = "".join(f"<th>{MESES[m][:3]}</th>" for m in range(1, 13))
-    st.markdown(
-        f'<div class="hm-wrap"><table class="hm-table"><thead><tr><th class="hmp">Proyecto</th>{ths}</tr></thead>'
-        f'<tbody>{"".join(rows_hm)}</tbody></table></div>',
-        unsafe_allow_html=True)
+    st.markdown(render_heatmap_table("Proyecto", rows_hm), unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Tasa por proyecto ──
@@ -813,15 +854,11 @@ with tab5:
 
     title5 = control_area_title(sel5_area)
     st.markdown(f'<div class="dash-card"><div class="card-title">{title5}</div><div class="card-sub">Promedio mensual con 12 meses fijos. Los registros sin valor no se incluyen en el cálculo.</div>', unsafe_allow_html=True)
+    st.markdown(heatmap_legend(), unsafe_allow_html=True)
 
     rows5 = build_heatmap_rows(df5_ctrl, df5_ens, sel5_area)
-    ths5 = "".join(f"<th>{MESES[m][:3]}</th>" for m in range(1, 13))
     if rows5:
-        st.markdown(
-            f'<div class="hm-wrap"><table class="hm-table"><thead><tr><th class="hmp">Proyecto</th>{ths5}</tr></thead>'
-            f'<tbody>{"".join(rows5)}</tbody></table></div>',
-            unsafe_allow_html=True
-        )
+        st.markdown(render_heatmap_table("Proyecto", rows5), unsafe_allow_html=True)
     else:
         st.info("ℹ️ No se encontraron controles con los filtros aplicados.")
     st.markdown('</div>', unsafe_allow_html=True)
