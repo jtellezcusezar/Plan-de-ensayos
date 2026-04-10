@@ -576,7 +576,7 @@ def control_row_label(row):
     return f"{etapa} - {control}"
 
 
-def build_pending_controls_rows(df_ctrl, proyectos):
+def build_pending_controls_rows(df_ctrl, proyectos, show_repeat_count=False):
     pending_df = df_ctrl[df_ctrl["Valor_num"].isin([0, 0.5])].copy()
     rows = []
 
@@ -595,14 +595,28 @@ def build_pending_controls_rows(df_ctrl, proyectos):
 
         def format_controls(subdf):
             controles = (
-                subdf.apply(control_row_label, axis=1)
+                subdf["Control"]
                 .dropna()
                 .astype(str)
                 .str.strip()
             )
-            controles = [c for c in dict.fromkeys(controles.tolist()) if c]
+            controles = [c for c in controles.tolist() if c and c not in {"nan", "None"}]
             if not controles:
                 return '<span style="color:#9CA3AF;">—</span>'
+            if show_repeat_count:
+                counts = {}
+                ordered = []
+                for control in controles:
+                    if control not in counts:
+                        counts[control] = 0
+                        ordered.append(control)
+                    counts[control] += 1
+                formatted = [
+                    f"{control} ({counts[control]})" if counts[control] >= 2 else control
+                    for control in ordered
+                ]
+                return "<br>".join(formatted)
+            controles = list(dict.fromkeys(controles))
             return "<br>".join(controles)
 
         rows.append({
@@ -1244,7 +1258,9 @@ with tab5:
     st.markdown(section_header("Controles pendientes", "Controles con valor 0 o 0,5 agrupados por proyecto"), unsafe_allow_html=True)
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
 
-    sel5_pend_mes = st.selectbox("Mes tabla de pendientes", ALL_M, key="t5_pending_mes")
+    pend_col, _ = st.columns([1.2, 4.8])
+    with pend_col:
+        sel5_pend_mes = st.selectbox("Mes", ALL_M, key="t5_pending_mes")
     df5_pending = df5_ctrl.copy()
     if sel5_pend_mes != "Todos":
         df5_pending = df5_pending[df5_pending["Mes"].isin([k for k, v in MESES.items() if v == sel5_pend_mes])]
@@ -1253,7 +1269,11 @@ with tab5:
         set(df5_pending["Proyecto"].dropna().tolist()) |
         set(df5_ens["Proyecto"].dropna().tolist())
     )
-    pending_rows = build_pending_controls_rows(df5_pending, proyectos_tabla)
+    pending_rows = build_pending_controls_rows(
+        df5_pending,
+        proyectos_tabla,
+        show_repeat_count=(sel5_pend_mes == "Todos"),
+    )
 
     if pending_rows:
         rows_html = "".join(
