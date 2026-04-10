@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -6,6 +7,8 @@ from pathlib import Path
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from openpyxl import load_workbook
+import json
+from uuid import uuid4
 
 st.set_page_config(
     page_title="Plan de Ensayos 2026", page_icon="🏗️",
@@ -289,6 +292,22 @@ def kpi(icon, label, value, sub, css):
             f'<div class="kpi-label">{label}</div><div class="kpi-value">{value}</div>'
             f'<div class="kpi-sub">{sub}</div></div>')
 
+
+def render_echarts(option, height=320):
+    chart_id = f"echart-{uuid4().hex}"
+    option_json = json.dumps(option, ensure_ascii=False)
+    html = f"""
+    <div id="{chart_id}" style="width:100%;height:{height}px;"></div>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <script>
+      const chart = echarts.init(document.getElementById('{chart_id}'));
+      const option = {option_json};
+      chart.setOption(option);
+      window.addEventListener('resize', () => chart.resize());
+    </script>
+    """
+    components.html(html, height=height, scrolling=False)
+
 def section_header(title, subtitle=""):
     subtitle_html = f'<div class="section-sub">{subtitle}</div>' if subtitle else ""
     return (
@@ -563,31 +582,39 @@ with tab1:
         st.markdown('<div class="dash-card">', unsafe_allow_html=True)
         ec = df1["Estado"].value_counts().reset_index()
         ec.columns = ["Estado","n"]
-        ec["C"] = ec["Estado"].map(COLORS)
-        fig_donut = go.Figure(go.Pie(
-            labels=ec["Estado"], values=ec["n"], hole=0.58,
-            marker_colors=ec["C"].tolist(),
-            textinfo="percent",
-            textposition="outside",
-            insidetextorientation="horizontal",
-            hovertemplate="<b>%{label}</b><br>%{value:,} · %{percent}<extra></extra>",
-        ))
-        # Aplicar layout sin legend primero, luego agregar legend vertical y annotations
-        apply_base(fig_donut, h=270, legend_h=False)
-        fig_donut.update_layout(
-            showlegend=True,
-            legend=dict(
-                orientation="h",
-                x=0.5,
-                xanchor="center",
-                y=-0.12,
-                yanchor="top",
-                font=dict(size=12),
-            ),
-            annotations=[dict(text=f"<b>{len(df1):,}</b>", x=0.5, y=0.5,
-                              font_size=16, showarrow=False, font_color="#111827")],
-        )
-        st.plotly_chart(fig_donut, use_container_width=True, config={"displayModeBar": False})
+        donut_option = {
+            "color": [COLORS["Planeado"], COLORS["Completo"], COLORS["Incompleto"], COLORS["No Realizado"]],
+            "tooltip": {"trigger": "item", "formatter": "{b}<br/>{c} ({d}%)"},
+            "legend": {
+                "bottom": 0,
+                "left": "center",
+                "icon": "circle",
+                "textStyle": {"fontFamily": "Inter", "fontSize": 12, "color": "#6B7280"},
+            },
+            "series": [{
+                "type": "pie",
+                "radius": ["48%", "72%"],
+                "center": ["50%", "42%"],
+                "avoidLabelOverlap": True,
+                "label": {"show": True, "formatter": "{d}%", "fontSize": 11, "color": "#6B7280"},
+                "labelLine": {"show": True, "length": 10, "length2": 8},
+                "itemStyle": {"borderColor": "#FFFFFF", "borderWidth": 2},
+                "data": [{"name": row["Estado"], "value": int(row["n"])} for _, row in ec.iterrows()],
+            }],
+            "graphic": [{
+                "type": "text",
+                "left": "center",
+                "top": "34%",
+                "style": {
+                    "text": f"{len(df1):,}",
+                    "fontSize": 18,
+                    "fontWeight": 700,
+                    "fontFamily": "Inter",
+                    "fill": "#111827",
+                },
+            }],
+        }
+        render_echarts(donut_option, height=300)
         st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Barras por proyecto ──
@@ -601,17 +628,36 @@ with tab1:
                        .sort_values().index.tolist())
             pg = ex1.groupby(["Proyecto","Estado"])["Cantidad_num"].count().reset_index()
             pg.columns = ["Proyecto","Estado","n"]
-            fig_proy = px.bar(pg, x="n", y="Proyecto", color="Estado",
-                              orientation="h", barmode="stack",
-                              color_discrete_map=COLORS,
-                              category_orders={"Proyecto": orden,
-                                               "Estado": ["No Realizado","Incompleto","Completo"]})
-            fig_proy.update_traces(hovertemplate="<b>%{y}</b><br>%{data.name}: %{x}<extra></extra>",
-                                   marker_line_width=0)
-            apply_base(fig_proy, h=270)
-            fig_proy.update_layout(xaxis=dict(title="", gridcolor="#F3F4F6"),
-                                   yaxis=dict(title="", gridwidth=0))
-            st.plotly_chart(fig_proy, use_container_width=True, config={"displayModeBar": False})
+            pg_pivot = (pg.pivot(index="Proyecto", columns="Estado", values="n")
+                          .reindex(index=orden, columns=["No Realizado", "Incompleto", "Completo"], fill_value=0)
+                          .fillna(0))
+            proy_option = {
+                "color": [COLORS["No Realizado"], COLORS["Incompleto"], COLORS["Completo"]],
+                "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
+                "legend": {
+                    "bottom": 0,
+                    "left": "center",
+                    "textStyle": {"fontFamily": "Inter", "fontSize": 12, "color": "#6B7280"},
+                },
+                "grid": {"left": 110, "right": 10, "top": 10, "bottom": 45, "containLabel": True},
+                "xAxis": {
+                    "type": "value",
+                    "splitLine": {"show": True, "lineStyle": {"color": "#F3F4F6"}},
+                    "axisLabel": {"color": "#6B7280"},
+                },
+                "yAxis": {
+                    "type": "category",
+                    "data": orden,
+                    "axisLabel": {"color": "#374151", "fontFamily": "Inter"},
+                    "axisTick": {"show": False},
+                },
+                "series": [
+                    {"name": "No Realizado", "type": "bar", "stack": "total", "data": pg_pivot["No Realizado"].astype(int).tolist()},
+                    {"name": "Incompleto", "type": "bar", "stack": "total", "data": pg_pivot["Incompleto"].astype(int).tolist()},
+                    {"name": "Completo", "type": "bar", "stack": "total", "data": pg_pivot["Completo"].astype(int).tolist()},
+                ],
+            }
+            render_echarts(proy_option, height=300)
         st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Línea temporal ──
@@ -620,30 +666,69 @@ with tab1:
     mp = (df1.groupby("Mes").size()
             .reindex(range(1,13), fill_value=0).reset_index())
     mp.columns = ["Mes","n"]
-    fig_line = go.Figure()
-    fig_line.add_trace(go.Scatter(
-        x=mp["Mes"].map(lambda m: MESES[m]), y=mp["n"],
-        name="Plan del mes", mode="lines+markers",
-        line=dict(color=COLORS["Planeado"], width=2, dash="dot", shape="spline", smoothing=0.8),
-        marker=dict(size=6),
-        hovertemplate="<b>%{x}</b><br>Plan del mes: %{y}<extra></extra>",
-    ))
-    for est, fc in [("Completo","rgba(107,191,158,.15)"), ("Incompleto",None), ("No Realizado",None)]:
-        sub = (df1[df1["EsEjecutado"] & (df1["Estado"]==est)]
-                 .groupby("Mes").size()
-                 .reindex(meses_con_datos, fill_value=0).reset_index())
-        sub.columns = ["Mes","n"]
-        fig_line.add_trace(go.Scatter(
-            x=sub["Mes"].map(lambda m: MESES[m]), y=sub["n"],
-            name=est, mode="lines+markers",
-            line=dict(color=COLORS[est], width=2.5, shape="spline", smoothing=1.0),
-            marker=dict(size=8, line=dict(color="white", width=1.5)),
-            fill="tozeroy" if est == "Completo" else None, fillcolor=fc,
-            hovertemplate=f"<b>%{{x}}</b><br>{est}: %{{y}}<extra></extra>",
-        ))
-    apply_base(fig_line, h=295)
-    fig_line.update_layout(xaxis=dict(gridcolor="#F3F4F6"), yaxis=dict(gridcolor="#F3F4F6"))
-    st.plotly_chart(fig_line, use_container_width=True, config={"displayModeBar": False})
+    line_option = {
+        "color": [COLORS["Planeado"], COLORS["Completo"], COLORS["Incompleto"], COLORS["No Realizado"]],
+        "tooltip": {"trigger": "axis"},
+        "legend": {
+            "bottom": 0,
+            "left": "center",
+            "textStyle": {"fontFamily": "Inter", "fontSize": 12, "color": "#6B7280"},
+        },
+        "grid": {"left": 35, "right": 15, "top": 20, "bottom": 50, "containLabel": True},
+        "xAxis": {
+            "type": "category",
+            "data": [MESES[m] for m in range(1, 13)],
+            "axisLabel": {"color": "#6B7280", "fontSize": 11},
+            "axisLine": {"lineStyle": {"color": "#D1D5DB"}},
+        },
+        "yAxis": {
+            "type": "value",
+            "axisLabel": {"color": "#6B7280"},
+            "splitLine": {"lineStyle": {"color": "#F3F4F6"}},
+        },
+        "series": [
+            {
+                "name": "Plan del mes",
+                "type": "line",
+                "smooth": True,
+                "symbolSize": 7,
+                "lineStyle": {"width": 2, "type": "dashed"},
+                "data": mp["n"].astype(int).tolist(),
+            },
+            {
+                "name": "Completo",
+                "type": "line",
+                "smooth": True,
+                "symbolSize": 8,
+                "areaStyle": {"color": "rgba(107,191,158,0.15)"},
+                "data": (df1[df1["EsEjecutado"] & (df1["Estado"]=="Completo")]
+                           .groupby("Mes").size()
+                           .reindex(range(1,13), fill_value=0)
+                           .astype(int).tolist()),
+            },
+            {
+                "name": "Incompleto",
+                "type": "line",
+                "smooth": True,
+                "symbolSize": 8,
+                "data": (df1[df1["EsEjecutado"] & (df1["Estado"]=="Incompleto")]
+                           .groupby("Mes").size()
+                           .reindex(range(1,13), fill_value=0)
+                           .astype(int).tolist()),
+            },
+            {
+                "name": "No Realizado",
+                "type": "line",
+                "smooth": True,
+                "symbolSize": 8,
+                "data": (df1[df1["EsEjecutado"] & (df1["Estado"]=="No Realizado")]
+                           .groupby("Mes").size()
+                           .reindex(range(1,13), fill_value=0)
+                           .astype(int).tolist()),
+            },
+        ],
+    }
+    render_echarts(line_option, height=320)
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
