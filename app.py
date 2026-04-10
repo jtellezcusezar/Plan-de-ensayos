@@ -375,21 +375,20 @@ def build_heatmap_rows(df_ctrl, df_ens, area):
             vals_ctrl = ctrl_proy.loc[ctrl_proy["Mes"] == m, "Valor_num"].dropna()
             vals_extra = extras.loc[extras["Mes"] == m, "Valor_num"].dropna()
             vals = pd.concat([vals_ctrl, vals_extra], ignore_index=True)
-            if vals.empty:
+            if area == "Curado":
+                raw_vals = ctrl_proy.loc[ctrl_proy["Mes"] == m, "Valor"].dropna()
+                parsed_vals = [parse_text_value(v) for v in raw_vals]
+                parsed_vals = [v for v in parsed_vals if v is not None]
+                if not parsed_vals:
+                    row_html.append('<td class="hna">—</td>')
+                    continue
+                t = round(parsed_vals[-1], 1)
+                row_html.append(f'<td class="{hm_cls(t)}" title="Valor registrado">{t:.0f}%</td>')
+            elif vals.empty:
                 row_html.append('<td class="hna">—</td>')
             else:
-                if area == "Curado":
-                    raw_vals = ctrl_proy.loc[ctrl_proy["Mes"] == m, "Valor"].dropna()
-                    parsed_vals = [parse_text_value(v) for v in raw_vals]
-                    parsed_vals = [v for v in parsed_vals if v is not None]
-                    if not parsed_vals:
-                        row_html.append('<td class="hna">—</td>')
-                        continue
-                    t = round(parsed_vals[-1], 1)
-                    row_html.append(f'<td class="{hm_cls(t)}" title="Valor registrado">{t:.0f}%</td>')
-                else:
-                    t = round(vals.mean() * 100, 1)
-                    row_html.append(f'<td class="{hm_cls(t)}" title="Promedio de {len(vals)} valores">{t:.0f}%</td>')
+                t = round(vals.mean() * 100, 1)
+                row_html.append(f'<td class="{hm_cls(t)}" title="Promedio de {len(vals)} valores">{t:.0f}%</td>')
         row_html.append("</tr>")
         rows.append("".join(row_html))
 
