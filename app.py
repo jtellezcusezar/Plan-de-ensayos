@@ -186,6 +186,8 @@ THEME_CSS = "\n".join([
     _css_var_block(':root[data-app-theme="light"]', THEME_TOKENS["light"]),
     _css_var_block(':root[data-app-theme="dark"]', THEME_TOKENS["dark"]),
 ])
+LIGHT_THEME_BG = THEME_TOKENS["light"]["bg"]
+DARK_THEME_BG = THEME_TOKENS["dark"]["bg"]
 
 BASE_LAYOUT = dict(
     paper_bgcolor="rgba(0,0,0,0)",
@@ -220,30 +222,74 @@ components.html(
     (function() {
       const doc = window.parent.document;
       const root = doc.documentElement;
+      const lightBg = "__LIGHT_THEME_BG__".toLowerCase();
+      const darkBg = "__DARK_THEME_BG__".toLowerCase();
+
+      const normalizeColor = (value) => {
+        const raw = (value || '').trim().toLowerCase().replace(/\\s+/g, '');
+        if (!raw) return '';
+        if (raw.startsWith('#')) return raw;
+        const rgb = raw.match(/rgba?\\((\\d+),(\\d+),(\\d+)/);
+        if (!rgb) return raw;
+        return '#' + [rgb[1], rgb[2], rgb[3]]
+          .map((v) => Number(v).toString(16).padStart(2, '0'))
+          .join('');
+      };
+
+      const readThemeVar = () => {
+        const nodes = [
+          doc.querySelector('.stApp'),
+          doc.querySelector('[data-testid="stAppViewContainer"]'),
+          doc.body,
+          doc.documentElement,
+        ].filter(Boolean);
+
+        for (const node of nodes) {
+          const styles = window.parent.getComputedStyle(node);
+          const value = styles.getPropertyValue('--background-color');
+          if (value && value.trim()) return value;
+        }
+        return '';
+      };
+
+      const luminanceFromColor = (value) => {
+        const normalized = normalizeColor(value);
+        const hex = normalized.startsWith('#') ? normalized.slice(1) : '';
+        if (hex.length !== 6) return 1;
+        const r = parseInt(hex.slice(0, 2), 16);
+        const g = parseInt(hex.slice(2, 4), 16);
+        const b = parseInt(hex.slice(4, 6), 16);
+        return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      };
 
       const detectTheme = () => {
-        const app = doc.querySelector('.stApp') || doc.body;
-        const bg = window.parent.getComputedStyle(app).backgroundColor || '';
-        const match = bg.match(/\\d+/g);
-        if (!match || match.length < 3) {
+        const nativeBg = normalizeColor(readThemeVar());
+        if (nativeBg === darkBg) {
+          root.setAttribute('data-app-theme', 'dark');
+          return;
+        }
+        if (nativeBg === lightBg) {
           root.setAttribute('data-app-theme', 'light');
           return;
         }
-        const [r, g, b] = match.slice(0, 3).map(Number);
-        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-        root.setAttribute('data-app-theme', luminance < 0.5 ? 'dark' : 'light');
+        root.setAttribute('data-app-theme', luminanceFromColor(nativeBg) < 0.5 ? 'dark' : 'light');
       };
 
       detectTheme();
-      const target = doc.querySelector('.stApp') || doc.body;
-      new MutationObserver(detectTheme).observe(target, { attributes: true, attributeFilter: ['class', 'style'] });
-      new MutationObserver(detectTheme).observe(doc.body, { attributes: true, attributeFilter: ['class', 'style'] });
+      const targets = [
+        doc.querySelector('.stApp'),
+        doc.querySelector('[data-testid="stAppViewContainer"]'),
+        doc.body,
+      ].filter(Boolean);
+      for (const target of targets) {
+        new MutationObserver(detectTheme).observe(target, { attributes: true, attributeFilter: ['class', 'style'] });
+      }
       window.parent.setTimeout(detectTheme, 50);
       window.parent.setTimeout(detectTheme, 300);
       window.parent.setInterval(detectTheme, 1000);
     })();
     </script>
-    """,
+    """.replace("__LIGHT_THEME_BG__", LIGHT_THEME_BG).replace("__DARK_THEME_BG__", DARK_THEME_BG),
     height=0,
     width=0,
 )
