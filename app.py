@@ -582,39 +582,49 @@ with tab1:
         st.markdown('<div class="dash-card">', unsafe_allow_html=True)
         ec = df1["Estado"].value_counts().reset_index()
         ec.columns = ["Estado","n"]
+        donut_states = [estado for estado in ["Planeado", "Completo", "Incompleto", "No Realizado"] if estado in ec["Estado"].tolist()]
+        ec_plot = (ec.set_index("Estado")
+                     .reindex(donut_states)
+                     .reset_index())
         donut_option = {
-            "color": [COLORS["Planeado"], COLORS["Completo"], COLORS["Incompleto"], COLORS["No Realizado"]],
+            "textStyle": {"fontFamily": "Inter, sans-serif"},
             "tooltip": {"trigger": "item", "formatter": "{b}<br/>{c} ({d}%)"},
             "legend": {
-                "bottom": 0,
+                "type": "scroll",
+                "bottom": 2,
                 "left": "center",
                 "icon": "circle",
-                "textStyle": {"fontFamily": "Inter", "fontSize": 12, "color": "#6B7280"},
+                "textStyle": {"fontFamily": "Inter, sans-serif", "fontSize": 12, "color": "#6B7280"},
             },
             "series": [{
                 "type": "pie",
                 "radius": ["48%", "72%"],
-                "center": ["50%", "42%"],
+                "center": ["50%", "40%"],
                 "avoidLabelOverlap": True,
-                "label": {"show": True, "formatter": "{d}%", "fontSize": 11, "color": "#6B7280"},
+                "label": {"show": True, "formatter": "{d}%", "fontFamily": "Inter, sans-serif", "fontSize": 11, "color": "#6B7280"},
                 "labelLine": {"show": True, "length": 10, "length2": 8},
                 "itemStyle": {"borderColor": "#FFFFFF", "borderWidth": 2},
-                "data": [{"name": row["Estado"], "value": int(row["n"])} for _, row in ec.iterrows()],
+                "data": [
+                    {"name": row["Estado"], "value": int(row["n"]), "itemStyle": {"color": COLORS[row["Estado"]]}}
+                    for _, row in ec_plot.iterrows()
+                ],
             }],
             "graphic": [{
                 "type": "text",
                 "left": "center",
-                "top": "34%",
+                "top": "40%",
                 "style": {
                     "text": f"{len(df1):,}",
                     "fontSize": 18,
                     "fontWeight": 700,
-                    "fontFamily": "Inter",
+                    "fontFamily": "Inter, sans-serif",
                     "fill": "#111827",
+                    "align": "center",
+                    "verticalAlign": "middle",
                 },
             }],
         }
-        render_echarts(donut_option, height=300)
+        render_echarts(donut_option, height=340)
         st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Barras por proyecto ──
@@ -632,23 +642,25 @@ with tab1:
                           .reindex(index=orden, columns=["No Realizado", "Incompleto", "Completo"], fill_value=0)
                           .fillna(0))
             proy_option = {
+                "textStyle": {"fontFamily": "Inter, sans-serif"},
                 "color": [COLORS["No Realizado"], COLORS["Incompleto"], COLORS["Completo"]],
                 "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
                 "legend": {
-                    "bottom": 0,
+                    "type": "scroll",
+                    "bottom": 2,
                     "left": "center",
-                    "textStyle": {"fontFamily": "Inter", "fontSize": 12, "color": "#6B7280"},
+                    "textStyle": {"fontFamily": "Inter, sans-serif", "fontSize": 12, "color": "#6B7280"},
                 },
-                "grid": {"left": 110, "right": 10, "top": 10, "bottom": 45, "containLabel": True},
+                "grid": {"left": 110, "right": 10, "top": 10, "bottom": 65, "containLabel": True},
                 "xAxis": {
                     "type": "value",
                     "splitLine": {"show": True, "lineStyle": {"color": "#F3F4F6"}},
-                    "axisLabel": {"color": "#6B7280"},
+                    "axisLabel": {"color": "#6B7280", "fontFamily": "Inter, sans-serif"},
                 },
                 "yAxis": {
                     "type": "category",
                     "data": orden,
-                    "axisLabel": {"color": "#374151", "fontFamily": "Inter"},
+                    "axisLabel": {"color": "#374151", "fontFamily": "Inter, sans-serif"},
                     "axisTick": {"show": False},
                 },
                 "series": [
@@ -657,7 +669,7 @@ with tab1:
                     {"name": "Completo", "type": "bar", "stack": "total", "data": pg_pivot["Completo"].astype(int).tolist()},
                 ],
             }
-            render_echarts(proy_option, height=300)
+            render_echarts(proy_option, height=330)
         st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Línea temporal ──
@@ -667,23 +679,25 @@ with tab1:
             .reindex(range(1,13), fill_value=0).reset_index())
     mp.columns = ["Mes","n"]
     line_option = {
+        "textStyle": {"fontFamily": "Inter, sans-serif"},
         "color": [COLORS["Planeado"], COLORS["Completo"], COLORS["Incompleto"], COLORS["No Realizado"]],
         "tooltip": {"trigger": "axis"},
         "legend": {
-            "bottom": 0,
+            "type": "scroll",
+            "bottom": 2,
             "left": "center",
-            "textStyle": {"fontFamily": "Inter", "fontSize": 12, "color": "#6B7280"},
+            "textStyle": {"fontFamily": "Inter, sans-serif", "fontSize": 12, "color": "#6B7280"},
         },
-        "grid": {"left": 35, "right": 15, "top": 20, "bottom": 50, "containLabel": True},
+        "grid": {"left": 35, "right": 15, "top": 20, "bottom": 68, "containLabel": True},
         "xAxis": {
             "type": "category",
             "data": [MESES[m] for m in range(1, 13)],
-            "axisLabel": {"color": "#6B7280", "fontSize": 11},
+            "axisLabel": {"color": "#6B7280", "fontFamily": "Inter, sans-serif", "fontSize": 11},
             "axisLine": {"lineStyle": {"color": "#D1D5DB"}},
         },
         "yAxis": {
             "type": "value",
-            "axisLabel": {"color": "#6B7280"},
+            "axisLabel": {"color": "#6B7280", "fontFamily": "Inter, sans-serif"},
             "splitLine": {"lineStyle": {"color": "#F3F4F6"}},
         },
         "series": [
@@ -728,7 +742,7 @@ with tab1:
             },
         ],
     }
-    render_echarts(line_option, height=320)
+    render_echarts(line_option, height=340)
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
