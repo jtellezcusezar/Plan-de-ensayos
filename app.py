@@ -70,12 +70,8 @@ COLORS = {
 BASE_LAYOUT = dict(
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
-    font=dict(family="Inter, sans-serif", color="#272829", size=12),
+    font=dict(family="Inter, sans-serif", size=12),
     margin=dict(t=40, b=10, l=10, r=10),
-    hoverlabel=dict(
-        bgcolor="#1E293B", font_color="#F1F5F9",
-        font_size=12, bordercolor="#334155",
-    ),
 )
 
 def apply_base(fig, h=300, legend_h=True):
@@ -85,7 +81,6 @@ def apply_base(fig, h=300, legend_h=True):
         plot_bgcolor=BASE_LAYOUT["plot_bgcolor"],
         font=BASE_LAYOUT["font"],
         margin=BASE_LAYOUT["margin"],
-        hoverlabel=BASE_LAYOUT["hoverlabel"],
         height=h,
     )
     if legend_h:
@@ -587,9 +582,9 @@ with tab1:
             showlegend=True,
             legend=dict(orientation="v", x=1.02, y=0.5, font=dict(size=12)),
             annotations=[dict(text=f"<b>{len(df1):,}</b>", x=0.5, y=0.5,
-                              font_size=16, showarrow=False, font_color="#111827")],
+                              font_size=16, showarrow=False)],
         )
-        st.plotly_chart(fig_donut, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(fig_donut, use_container_width=True, theme="streamlit", config={"displayModeBar": False})
         st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Barras por proyecto ──
@@ -611,9 +606,9 @@ with tab1:
             fig_proy.update_traces(hovertemplate="<b>%{y}</b><br>%{data.name}: %{x}<extra></extra>",
                                    marker_line_width=0)
             apply_base(fig_proy, h=270)
-            fig_proy.update_layout(xaxis=dict(title="", gridcolor="#F3F4F6"),
+            fig_proy.update_layout(xaxis=dict(title=""),
                                    yaxis=dict(title="", gridwidth=0))
-            st.plotly_chart(fig_proy, use_container_width=True, config={"displayModeBar": False})
+            st.plotly_chart(fig_proy, use_container_width=True, theme="streamlit", config={"displayModeBar": False})
         st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Línea temporal ──
@@ -710,21 +705,21 @@ with tab2:
             marker_line_width=0,
             text=t_df["tasa"].map(lambda t: f"{t:.1f}%"),
             textposition="outside",
-            textfont=dict(size=11, color="#6B7280"),
+            textfont=dict(size=11),
             customdata=t_df[["comp", "inc", "no_r", "tot"]].values,
             hovertemplate="<b>%{y}</b><br>Cumplimiento: %{x:.1f}%<br>Completos: %{customdata[0]}<br>Incompletos: %{customdata[1]}<br>No realizados: %{customdata[2]}<br>Total plan meses vencidos: %{customdata[3]}<extra></extra>",
         ))
         fig_tasa.add_vline(x=META, line_dash="dot", line_color="#7BA7D4", line_width=1.5,
                            annotation_text=f"Meta {META}%",
-                           annotation_font_color="#7BA7D4", annotation_font_size=10,
+                           annotation_font_size=10,
                            annotation_position="top right")
         apply_base(fig_tasa, h=340, legend_h=False)
         fig_tasa.update_layout(
             showlegend=False,
-            xaxis=dict(range=[0,115], gridcolor="#F3F4F6", ticksuffix="%", title=""),
+            xaxis=dict(range=[0,115], ticksuffix="%", title=""),
             yaxis=dict(gridwidth=0, title=""),
         )
-        st.plotly_chart(fig_tasa, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(fig_tasa, use_container_width=True, theme="streamlit", config={"displayModeBar": False})
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
