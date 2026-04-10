@@ -1189,7 +1189,8 @@ with tab5:
 
     rows5 = build_heatmap_rows(df5_ctrl, df5_ens, sel5_area)
     if rows5:
-        st.markdown(render_heatmap_table("Proyecto", rows5), unsafe_allow_html=True)
+        heatmap5_option, heatmap5_height = build_echarts_heatmap_config(rows5)
+        render_echarts(heatmap5_option, height=heatmap5_height)
     else:
         st.info("ℹ️ No se encontraron controles con los filtros aplicados.")
     st.markdown('</div>', unsafe_allow_html=True)
