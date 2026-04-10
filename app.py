@@ -8,7 +8,6 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from openpyxl import load_workbook
 import json
-import re
 from uuid import uuid4
 
 st.set_page_config(
@@ -297,18 +296,31 @@ def kpi(icon, label, value, sub, css):
 def render_echarts(option, height=320):
     chart_id = f"echart-{uuid4().hex}"
     option_json = json.dumps(option, ensure_ascii=False)
-    option_json = re.sub(
-        r'"__JS__(.*?)__JS__"',
-        lambda m: m.group(1).replace('\\"', '"'),
-        option_json,
-        flags=re.DOTALL,
-    )
+    option_json_js = json.dumps(option_json, ensure_ascii=False)
     html = f"""
     <div id="{chart_id}" style="width:100%;height:{height}px;"></div>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
     <script>
+      function reviveEchartsFunctions(value) {{
+        if (Array.isArray(value)) {{
+          return value.map(reviveEchartsFunctions);
+        }}
+        if (value && typeof value === 'object') {{
+          for (const key of Object.keys(value)) {{
+            value[key] = reviveEchartsFunctions(value[key]);
+          }}
+          return value;
+        }}
+        if (typeof value === 'string' && value.startsWith('__JS__') && value.endsWith('__JS__')) {{
+          const fnBody = value.slice(6, -6);
+          return eval('(' + fnBody + ')');
+        }}
+        return value;
+      }}
+
       const chart = echarts.init(document.getElementById('{chart_id}'));
-      const option = {option_json};
+      const rawOption = {option_json_js};
+      const option = reviveEchartsFunctions(JSON.parse(rawOption));
       chart.setOption(option);
       window.addEventListener('resize', () => chart.resize());
     </script>
