@@ -576,7 +576,14 @@ with tab1:
         apply_base(fig_donut, h=270, legend_h=False)
         fig_donut.update_layout(
             showlegend=True,
-            legend=dict(orientation="v", x=1.02, y=0.5, font=dict(size=12)),
+            legend=dict(
+                orientation="h",
+                x=0.5,
+                xanchor="center",
+                y=-0.12,
+                yanchor="top",
+                font=dict(size=12),
+            ),
             annotations=[dict(text=f"<b>{len(df1):,}</b>", x=0.5, y=0.5,
                               font_size=16, showarrow=False, font_color="#111827")],
         )
