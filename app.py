@@ -201,6 +201,11 @@ div[data-testid="stDownloadButton"] button:hover{background:#7BA7D4!important;co
 EXCEL_PATH = Path("Plan_de_ensayos_2026.xlsx")
 
 
+def get_excel_signature(path):
+    stat = path.stat()
+    return stat.st_mtime_ns, stat.st_size
+
+
 def read_excel_table(path, table_name):
     """Lee una tabla nombrada de Excel sin depender del nombre de la hoja."""
     wb = load_workbook(path, data_only=True, read_only=False)
@@ -258,7 +263,8 @@ def normalize_project_key(value):
         return None
     return text.casefold()
 
-def load_data():
+@st.cache_data
+def load_data(excel_signature):
     df_ensayos = read_excel_table(EXCEL_PATH, "Ensayos")
     df_ensayos = df_ensayos.rename(columns={
         "Etapa": "ETAPA",
@@ -289,13 +295,8 @@ def load_data():
     return df_ensayos, df_controles
 
 
-def get_session_data():
-    if "excel_data" not in st.session_state:
-        st.session_state["excel_data"] = load_data()
-    return st.session_state["excel_data"]
-
-
-df_full, df_controles = get_session_data()
+EXCEL_SIGNATURE = get_excel_signature(EXCEL_PATH)
+df_full, df_controles = load_data(EXCEL_SIGNATURE)
 meses_con_datos = sorted(df_full[df_full["EsEjecutado"]]["Mes"].unique().tolist())
 mes_label = " – ".join([MESES[meses_con_datos[0]], MESES[meses_con_datos[-1]]]) if len(meses_con_datos) > 1 else MESES[meses_con_datos[0]]
 MES_ACTUAL = datetime.now(ZoneInfo("America/Bogota")).month
@@ -836,8 +837,9 @@ def build_city_month_chart_data_from_precomputed(material_month_maps, control_mo
     return city_month_values, cusezar_series
 
 
-def build_tab0_precomputed_data():
-    df_ensayos, df_ctrl = get_session_data()
+@st.cache_data
+def build_tab0_precomputed_data(excel_signature):
+    df_ensayos, df_ctrl = load_data(excel_signature)
     areas = ["Torre", "Producto terminado", "Zonas comunes", "Diseño", "Curado"]
 
     material_month_maps = {
@@ -883,8 +885,9 @@ def build_tab0_precomputed_data():
     }
 
 
-def build_tab2_precomputed_data():
-    df_ensayos, _ = get_session_data()
+@st.cache_data
+def build_tab2_precomputed_data(excel_signature):
+    df_ensayos, _ = load_data(excel_signature)
     summary = df_ensayos.copy()
     summary["comp"] = (summary["Cantidad_num"] == 1).astype(int)
     summary["inc"] = (summary["Cantidad_num"] == 0.5).astype(int)
@@ -980,8 +983,9 @@ def build_tab2_tasa_df_from_summary(summary_df):
     return pd.DataFrame(rows).sort_values("tasa", ascending=False)
 
 
-def get_tab5_view_data(ciudad, proyecto, area, pending_month_key):
-    df_ensayos, df_ctrl = get_session_data()
+@st.cache_data
+def get_tab5_view_data(excel_signature, ciudad, proyecto, area, pending_month_key):
+    df_ensayos, df_ctrl = load_data(excel_signature)
 
     if ciudad != "Todas":
         if "Ciudad" in df_ctrl.columns:
@@ -1176,7 +1180,7 @@ with tab0:
     st.markdown(heatmap_legend(), unsafe_allow_html=True)
     st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
-    tab0_data = build_tab0_precomputed_data()
+    tab0_data = build_tab0_precomputed_data(EXCEL_SIGNATURE)
     materiales_map = tab0_data["material_month_maps"][mes0_num]
     torre_map = tab0_data["control_month_maps"]["Torre"][mes0_num]
     producto_map = tab0_data["control_month_maps"]["Producto terminado"][mes0_num]
@@ -1504,7 +1508,7 @@ with tab2:
     sel2_mat   = f2c.selectbox("Material", ALL_MAT, key="t2m")
 
     df2 = filt(filt(filt(df_full, "Proyecto", sel2_proy, "Todos"), "ETAPA", sel2_etapa, "Todas"), "MATERIAL", sel2_mat, "Todos")
-    tab2_summary = filter_tab2_summary(build_tab2_precomputed_data(), sel2_proy, sel2_etapa, sel2_mat)
+    tab2_summary = filter_tab2_summary(build_tab2_precomputed_data(EXCEL_SIGNATURE), sel2_proy, sel2_etapa, sel2_mat)
 
     # ── Heatmap ──
     st.markdown(section_header('Heatmap de Cumplimiento — Proyecto × Mes', 'Tasa = promedio de valores ejecutados (0, 0.5, 1). "Plan." = sin datos ejecutados ese mes.'), unsafe_allow_html=True)
@@ -1770,6 +1774,7 @@ with tab5:
     pending_rows = []
     try:
         rows5, pending_rows = get_tab5_view_data(
+            EXCEL_SIGNATURE,
             sel5_ciud,
             sel5_proy,
             sel5_area,
@@ -1801,6 +1806,7 @@ with tab5:
     pending_month_key = "Todos" if sel5_pend_mes == "Todos" else next((k for k, v in MESES.items() if v == sel5_pend_mes), "Todos")
     try:
         _, pending_rows = get_tab5_view_data(
+            EXCEL_SIGNATURE,
             sel5_ciud,
             sel5_proy,
             sel5_area,
