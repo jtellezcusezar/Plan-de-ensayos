@@ -180,6 +180,14 @@ div[data-testid="stTextInput"]>div>input:focus{border-color:#7BA7D4!important;bo
 .ig-table tr.ig-summary-row td.h25,
 .ig-table tr.ig-summary-row td.h0,
 .ig-table tr.ig-summary-row td.hna{background:#E9C9CC!important;}
+.ig-table tr.ig-corp-row td{background:#BAA1A3!important;border-top:1px solid #9F8487;border-bottom:1px solid #9F8487;font-weight:800;}
+.ig-table tr.ig-corp-row td:first-child{background:#BAA1A3!important;color:#5E1F28!important;text-transform:uppercase;letter-spacing:.05em;}
+.ig-table tr.ig-corp-row td.h100,
+.ig-table tr.ig-corp-row td.h75,
+.ig-table tr.ig-corp-row td.h50,
+.ig-table tr.ig-corp-row td.h25,
+.ig-table tr.ig-corp-row td.h0,
+.ig-table tr.ig-corp-row td.hna{background:#BAA1A3!important;}
 .ig-table tr:last-child td{border-bottom:none;}
 .hml{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
 .hml span{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;}
@@ -907,6 +915,7 @@ with tab0:
         city_groups.setdefault(ciudad, []).append(proyecto)
 
     body_rows = []
+    corp_row_values = []
     for ciudad in sorted(city_groups):
         city_projects = sorted(city_groups[ciudad])
         city_row_values = []
@@ -924,6 +933,7 @@ with tab0:
 
             promedio_mes = average_values(row_values)
             city_row_values.append(row_values + [promedio_mes])
+            corp_row_values.append(row_values + [promedio_mes])
 
             row_html = [f"<tr><td>{proyecto}</td>"]
             row_html.append(percent_cell_html(materiales_map.get(proyecto)))
@@ -949,6 +959,19 @@ with tab0:
             city_row_html.append(percent_cell_html(value))
         city_row_html.append("</tr>")
         body_rows.append("".join(city_row_html))
+
+    corp_columns_avg = []
+    total_columns = 7 if mostrar_diseno else 6
+    for col_idx in range(total_columns):
+        corp_columns_avg.append(average_values(
+            row[col_idx] for row in corp_row_values
+        ))
+
+    corp_row_html = ['<tr class="ig-corp-row"><td>Total corporación</td>']
+    for value in corp_columns_avg:
+        corp_row_html.append(percent_cell_html(value))
+    corp_row_html.append("</tr>")
+    body_rows.append("".join(corp_row_html))
 
     st.markdown(
         f'<div class="ig-wrap">'
