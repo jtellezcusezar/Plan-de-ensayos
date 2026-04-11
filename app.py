@@ -267,13 +267,43 @@ def normalize_project_key(value):
 def normalize_month_header(value):
     if value is None or pd.isna(value):
         return None
+
+    if isinstance(value, datetime):
+        return value.month
+
+    if isinstance(value, (int, float)) and not pd.isna(value):
+        month_num = int(value)
+        if 1 <= month_num <= 12:
+            return month_num
+
     text = str(value).strip()
     if not text:
         return None
 
-    month_lookup = {nombre.casefold(): month for month, nombre in MESES.items()}
-    month_lookup.update({nombre[:3].casefold(): month for month, nombre in MESES.items()})
-    return month_lookup.get(text.casefold())
+    normalized_text = (
+        text.casefold()
+        .replace(".", "")
+        .replace("á", "a")
+        .replace("é", "e")
+        .replace("í", "i")
+        .replace("ó", "o")
+        .replace("ú", "u")
+    )
+
+    month_lookup = {}
+    for month, nombre in MESES.items():
+        normalized_name = (
+            nombre.casefold()
+            .replace("á", "a")
+            .replace("é", "e")
+            .replace("í", "i")
+            .replace("ó", "o")
+            .replace("ú", "u")
+        )
+        month_lookup[normalized_name] = month
+        month_lookup[normalized_name[:3]] = month
+
+    return month_lookup.get(normalized_text)
 
 @st.cache_data
 def load_data(excel_signature):
