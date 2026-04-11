@@ -180,10 +180,6 @@ div[data-testid="stTextInput"]>div>input:focus{border-color:#7BA7D4!important;bo
 .ig-table tr.ig-summary-row td.h25,
 .ig-table tr.ig-summary-row td.h0,
 .ig-table tr.ig-summary-row td.hna{background:#E9C9CC!important;}
-.inline-filter{display:flex;align-items:center;gap:6px;margin-bottom:2px;min-height:48px;}
-.inline-filter-label{font-size:13px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;line-height:1;display:flex;align-items:center;height:100%;}
-.inline-filter div[data-testid="stSelectbox"]{flex:1;}
-.inline-filter div[data-testid="stSelectbox"] > label{display:none!important;}
 .ig-table tr:last-child td{border-bottom:none;}
 .hml{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
 .hml span{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;}
@@ -857,21 +853,14 @@ with tab0:
     default_mes_general = MESES[MESES_VENCIDOS[-1]] if MESES_VENCIDOS else list(MESES.values())[0]
     default_mes_general_idx = ALL_M.index(default_mes_general) if default_mes_general in ALL_M else 1
 
-    gcol, _ = st.columns([1.05, 4.95])
+    gcol, _ = st.columns([1.2, 4.8])
     with gcol:
-        st.markdown('<div class="inline-filter">', unsafe_allow_html=True)
-        label_col, select_col = st.columns([0.22, 0.78], gap="small")
-        with label_col:
-            st.markdown('<div class="inline-filter-label">Mes</div>', unsafe_allow_html=True)
-        with select_col:
-            sel0_mes = st.selectbox(
-                "Mes",
-                ALL_M[1:],
-                index=max(0, default_mes_general_idx - 1),
-                key="t0m",
-                label_visibility="collapsed",
-            )
-        st.markdown('</div>', unsafe_allow_html=True)
+        sel0_mes = st.selectbox(
+            "Mes",
+            ALL_M[1:],
+            index=max(0, default_mes_general_idx - 1),
+            key="t0m",
+        )
 
     mes0_num = next((k for k, v in MESES.items() if v == sel0_mes), None)
 
