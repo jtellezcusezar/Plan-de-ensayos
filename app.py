@@ -1672,6 +1672,34 @@ with tab1:
     render_echarts(line_option, height=340)
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # ── Ensayos pendientes ──
+    st.markdown(section_header("Ensayos pendientes", "Ensayos con valor 0 o 0,5 según los filtros aplicados"), unsafe_allow_html=True)
+    st.markdown('<div class="dash-card">', unsafe_allow_html=True)
+    pending_ensayos_df = df1[
+        df1["Cantidad_num"].isin([0, 0.5])
+    ][["Proyecto", "ETAPA", "ENSAYO", "Estado"]].copy()
+    pending_ensayos_df.columns = ["Proyecto", "Etapa", "Ensayo pendiente", "Estado"]
+
+    if not pending_ensayos_df.empty:
+        pending_ensayos_df = pending_ensayos_df.sort_values(
+            ["Proyecto", "Etapa", "Estado", "Ensayo pendiente"],
+            ascending=[True, True, True, True],
+        )
+        rows_pending = "".join(
+            f"<tr><td>{r.Proyecto}</td><td>{r.Etapa}</td><td>{r['Ensayo pendiente']}</td><td>{badge(r.Estado)}</td></tr>"
+            for _, r in pending_ensayos_df.iterrows()
+        )
+        st.markdown(
+            f'<div style="overflow-x:auto;border-radius:10px;border:1px solid #E5E9F0;max-height:420px;overflow-y:auto;">'
+            f'<table class="rt"><thead><tr>'
+            f'<th>Proyecto</th><th>Etapa</th><th>Ensayo pendiente</th><th>Estado</th>'
+            f'</tr></thead><tbody>{rows_pending}</tbody></table></div>',
+            unsafe_allow_html=True
+        )
+    else:
+        st.markdown('<div class="ok-note">✅ No hay ensayos pendientes con los filtros aplicados.</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 3
 # ══════════════════════════════════════════════════════════════════════════════
