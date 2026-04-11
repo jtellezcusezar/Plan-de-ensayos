@@ -723,6 +723,62 @@ def get_project_accumulated_map(df_ctrl, df_ens, selected_month, include_design)
     return accumulated
 
 
+def get_city_month_chart_data(df_ctrl, df_ens, project_city_map):
+    monthly_material = {m: get_material_month_map(df_ens, m) for m in range(1, 13)}
+    monthly_torre = {m: get_control_month_map(df_ctrl, df_ens, "Torre", m) for m in range(1, 13)}
+    monthly_producto = {m: get_control_month_map(df_ctrl, df_ens, "Producto terminado", m) for m in range(1, 13)}
+    monthly_zonas = {m: get_control_month_map(df_ctrl, df_ens, "Zonas comunes", m) for m in range(1, 13)}
+    monthly_diseno = {m: get_control_month_map(df_ctrl, df_ens, "Diseño", m) for m in range(1, 13)}
+    monthly_curado = {m: get_control_month_map(df_ctrl, df_ens, "Curado", m) for m in range(1, 13)}
+
+    proyectos = sorted(
+        set(df_ens["Proyecto"].dropna().tolist()) |
+        set(df_ctrl["Proyecto"].dropna().tolist())
+    )
+
+    include_design = any(
+        value is not None
+        for month_map in monthly_diseno.values()
+        for value in month_map.values()
+    )
+
+    city_month_values = {}
+    cusezar_series = []
+
+    for month in range(1, 13):
+        month_city_values = {}
+        for proyecto in proyectos:
+            row_values = [
+                monthly_material[month].get(proyecto),
+                monthly_torre[month].get(proyecto),
+                monthly_producto[month].get(proyecto),
+                monthly_zonas[month].get(proyecto),
+            ]
+            if include_design:
+                row_values.append(monthly_diseno[month].get(proyecto))
+            row_values.append(monthly_curado[month].get(proyecto))
+
+            promedio_mes = average_values(row_values)
+            if promedio_mes is None:
+                continue
+
+            ciudad = project_city_map.get(normalize_project_key(proyecto), "Sin ciudad")
+            month_city_values.setdefault(ciudad, []).append(promedio_mes)
+
+        month_city_avg = {
+            ciudad: average_values(values)
+            for ciudad, values in month_city_values.items()
+        }
+
+        for ciudad, value in month_city_avg.items():
+            city_month_values.setdefault(ciudad, [None] * 12)
+            city_month_values[ciudad][month - 1] = value
+
+        cusezar_series.append(average_values(month_city_avg.values()))
+
+    return city_month_values, cusezar_series
+
+
 def get_project_city_map():
     frames = []
     for df in (df_full, df_controles):
@@ -1021,6 +1077,63 @@ with tab0:
         f'<tbody>{"".join(body_rows)}</tbody></table></div></div>',
         unsafe_allow_html=True
     )
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
+    st.markdown(section_header("Evolución mensual por ciudad", "Barras por ciudad y línea de Cusezar con el promedio mensual de todas las ciudades con dato"), unsafe_allow_html=True)
+    st.markdown('<div class="dash-card">', unsafe_allow_html=True)
+
+    city_month_series, cusezar_month_series = get_city_month_chart_data(df_controles, df_full, project_city_map)
+    month_labels_chart = [MESES[m] for m in range(1, 13)]
+    city_names = sorted(city_month_series.keys())
+    city_palette = [
+        "#7BA7D4", "#6BBF9E", "#E8C17A", "#D98B8B", "#5B8FF9", "#61DDAA",
+        "#65789B", "#F6BD16", "#7262FD", "#78D3F8", "#9661BC", "#F6903D",
+    ]
+
+    combo_option = {
+        "textStyle": {"fontFamily": "Inter, sans-serif"},
+        "color": city_palette + ["#B5545C"],
+        "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
+        "legend": {
+            "type": "scroll",
+            "bottom": 2,
+            "left": "center",
+            "textStyle": {"fontFamily": "Inter, sans-serif", "fontSize": 12, "color": "#6B7280"},
+        },
+        "grid": {"left": 45, "right": 20, "top": 20, "bottom": 72, "containLabel": True},
+        "xAxis": {
+            "type": "category",
+            "data": month_labels_chart,
+            "axisLabel": {"color": "#6B7280", "fontFamily": "Inter, sans-serif", "fontSize": 11},
+            "axisLine": {"lineStyle": {"color": "#D1D5DB"}},
+        },
+        "yAxis": {
+            "type": "value",
+            "min": 0,
+            "max": 100,
+            "axisLabel": {"formatter": "{value}%", "color": "#6B7280", "fontFamily": "Inter, sans-serif"},
+            "splitLine": {"lineStyle": {"color": "#F3F4F6"}},
+        },
+        "series": [
+            {
+                "name": ciudad,
+                "type": "bar",
+                "barMaxWidth": 18,
+                "data": city_month_series[ciudad],
+            }
+            for ciudad in city_names
+        ] + [{
+            "name": "Cusezar",
+            "type": "line",
+            "smooth": True,
+            "symbolSize": 8,
+            "lineStyle": {"width": 3, "color": "#B5545C"},
+            "itemStyle": {"color": "#B5545C"},
+            "data": cusezar_month_series,
+        }],
+    }
+    render_echarts(combo_option, height=390)
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
