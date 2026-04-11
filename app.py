@@ -234,6 +234,15 @@ def parse_text_value(value):
         return None
     return num * 100 if 0 <= num <= 1 else num
 
+
+def normalize_project_key(value):
+    if value is None or pd.isna(value):
+        return None
+    text = " ".join(str(value).split()).strip()
+    if not text or text.lower() in {"nan", "none"}:
+        return None
+    return text.casefold()
+
 @st.cache_data
 def load_data(file_mtime):
     df_ensayos = read_excel_table(EXCEL_PATH, "Ensayos")
@@ -680,6 +689,8 @@ def get_project_city_map():
                 sub["Proyecto"].str.lower().ne("none") &
                 sub["Ciudad"].str.lower().ne("none")
             ]
+            sub["ProyectoKey"] = sub["Proyecto"].map(normalize_project_key)
+            sub = sub[sub["ProyectoKey"].notna()]
             frames.append(sub)
 
     if not frames:
@@ -687,7 +698,7 @@ def get_project_city_map():
 
     cities_df = pd.concat(frames, ignore_index=True).drop_duplicates()
     city_map = {}
-    for proyecto, group in cities_df.groupby("Proyecto", sort=True):
+    for proyecto_key, group in cities_df.groupby("ProyectoKey", sort=True):
         ciudades = (
             group["Ciudad"]
             .dropna()
@@ -699,7 +710,7 @@ def get_project_city_map():
             if ciudad and ciudad.lower() not in {"nan", "none"}
         ]
         if ciudades:
-            city_map[proyecto] = ciudades[0]
+            city_map[proyecto_key] = ciudades[0]
     return city_map
 
 
@@ -881,7 +892,7 @@ with tab0:
 
     city_groups = {}
     for proyecto in proyectos_general:
-        ciudad = project_city_map.get(proyecto, "Sin ciudad")
+        ciudad = project_city_map.get(normalize_project_key(proyecto), "Sin ciudad")
         city_groups.setdefault(ciudad, []).append(proyecto)
 
     body_rows = []
