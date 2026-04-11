@@ -167,6 +167,12 @@ div[data-testid="stTextInput"]>div>input:focus{border-color:#7BA7D4!important;bo
 .rt th{background:#F8F9FB;padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #E5E9F0;white-space:nowrap;}
 .rt td{padding:10px 14px;border-bottom:1px solid #F3F4F6;color:#6B7280;}
 .rt td:first-child{color:#111827;font-weight:600;}.rt tr:last-child td{border-bottom:none;}.rt tr:hover td{background:#FAFBFC;}
+.ig-wrap{display:flex;justify-content:center;}
+.ig-table{width:100%;max-width:1180px;border-collapse:collapse;font-size:12px;table-layout:fixed;}
+.ig-table th{background:#B5545C;padding:8px 8px;text-align:center;font-size:10px;font-weight:700;color:#FFF7F7;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #9F434B;white-space:normal;line-height:1.2;word-break:break-word;}
+.ig-table td{padding:7px 8px;border-bottom:1px solid #F1D9DB;color:#6B7280;text-align:center;line-height:1.15;word-break:break-word;}
+.ig-table td:first-child{background:#F8E8E8;color:#8F3942;font-weight:700;text-align:center;}
+.ig-table tr:last-child td{border-bottom:none;}
 .hml{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
 .hml span{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;}
 div[data-testid="stDownloadButton"] button{background:#EEF3FA!important;color:#4A7BA8!important;border:1.5px solid #C8DCF0!important;border-radius:8px!important;font-size:12px!important;font-weight:600!important;padding:6px 14px!important;}
@@ -843,9 +849,10 @@ with tab0:
         body_rows.append("".join(row_html))
 
     st.markdown(
-        f'<div style="overflow-x:auto;border-radius:10px;border:1px solid #E5E9F0;">'
-        f'<table class="rt"><thead><tr>{"".join(header_cells)}</tr></thead>'
-        f'<tbody>{"".join(body_rows)}</tbody></table></div>',
+        f'<div class="ig-wrap">'
+        f'<div style="width:100%;overflow-x:auto;border-radius:10px;border:1px solid #E5E9F0;max-width:1180px;">'
+        f'<table class="ig-table"><thead><tr>{"".join(header_cells)}</tr></thead>'
+        f'<tbody>{"".join(body_rows)}</tbody></table></div></div>',
         unsafe_allow_html=True
     )
     st.markdown('</div>', unsafe_allow_html=True)
