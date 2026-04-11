@@ -172,6 +172,8 @@ div[data-testid="stTextInput"]>div>input:focus{border-color:#7BA7D4!important;bo
 .ig-table th{background:#B5545C;padding:8px 8px;text-align:center;font-size:10px;font-weight:700;color:#FFF7F7;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #9F434B;white-space:normal;line-height:1.2;word-break:break-word;}
 .ig-table td{padding:7px 8px;border-bottom:1px solid #F1D9DB;color:#6B7280;text-align:center;line-height:1.15;word-break:break-word;}
 .ig-table td:first-child{background:#F8E8E8;color:#8F3942;font-weight:700;text-align:center;}
+.ig-table tr.ig-city-row td{background:#FCF1F2;border-top:1px solid #DCA9AE;border-bottom:1px solid #DCA9AE;font-weight:700;}
+.ig-table tr.ig-city-row td:first-child{background:#E9C9CC;color:#7D2F37;text-transform:uppercase;letter-spacing:.04em;}
 .ig-table tr:last-child td{border-bottom:none;}
 .hml{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
 .hml span{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;}
@@ -662,6 +664,35 @@ def get_control_month_map(df_ctrl, df_ens, area, month):
     }
 
 
+def get_project_city_map():
+    frames = []
+    for df in (df_full, df_controles):
+        if {"Proyecto", "Ciudad"}.issubset(df.columns):
+            sub = df[["Proyecto", "Ciudad"]].copy()
+            sub["Proyecto"] = sub["Proyecto"].astype(str).str.strip()
+            sub["Ciudad"] = sub["Ciudad"].astype(str).str.strip()
+            sub = sub[
+                sub["Proyecto"].notna() & sub["Ciudad"].notna() &
+                (sub["Proyecto"] != "") & (sub["Ciudad"] != "") &
+                (sub["Proyecto"] != "nan") & (sub["Ciudad"] != "nan")
+            ]
+            frames.append(sub)
+
+    if not frames:
+        return {}
+
+    cities_df = pd.concat(frames, ignore_index=True).drop_duplicates()
+    city_map = {}
+    for proyecto, group in cities_df.groupby("Proyecto"):
+        city_map[proyecto] = sorted(group["Ciudad"].tolist())[0]
+    return city_map
+
+
+def average_values(values):
+    valid_values = [float(v) for v in values if v is not None and not pd.isna(v)]
+    return round(sum(valid_values) / len(valid_values), 1) if valid_values else None
+
+
 def percent_cell_html(value):
     if value is None or pd.isna(value):
         return '<td class="hna"><strong>—</strong></td>'
@@ -807,6 +838,7 @@ with tab0:
     zonas_map = get_control_month_map(df_controles, df_full, "Zonas comunes", mes0_num)
     diseno_map = get_control_month_map(df_controles, df_full, "Diseño", mes0_num)
     curado_map = get_control_month_map(df_controles, df_full, "Curado", mes0_num)
+    project_city_map = get_project_city_map()
 
     mostrar_diseno = any(v is not None for v in diseno_map.values())
     proyectos_general = sorted(
@@ -832,32 +864,54 @@ with tab0:
         "<th>Promedio mes</th>",
     ])
 
-    body_rows = []
+    city_groups = {}
     for proyecto in proyectos_general:
-        row_values = [
-            materiales_map.get(proyecto),
-            torre_map.get(proyecto),
-            producto_map.get(proyecto),
-            zonas_map.get(proyecto),
-        ]
-        if mostrar_diseno:
-            row_values.append(diseno_map.get(proyecto))
-        row_values.append(curado_map.get(proyecto))
+        ciudad = project_city_map.get(proyecto, "Sin ciudad")
+        city_groups.setdefault(ciudad, []).append(proyecto)
 
-        valid_values = [float(v) for v in row_values if v is not None and not pd.isna(v)]
-        promedio_mes = round(sum(valid_values) / len(valid_values), 1) if valid_values else None
+    body_rows = []
+    for ciudad in sorted(city_groups):
+        city_projects = sorted(city_groups[ciudad])
+        city_row_values = []
 
-        row_html = [f"<tr><td>{proyecto}</td>"]
-        row_html.append(percent_cell_html(materiales_map.get(proyecto)))
-        row_html.append(percent_cell_html(torre_map.get(proyecto)))
-        row_html.append(percent_cell_html(producto_map.get(proyecto)))
-        row_html.append(percent_cell_html(zonas_map.get(proyecto)))
-        if mostrar_diseno:
-            row_html.append(percent_cell_html(diseno_map.get(proyecto)))
-        row_html.append(percent_cell_html(curado_map.get(proyecto)))
-        row_html.append(percent_cell_html(promedio_mes))
-        row_html.append("</tr>")
-        body_rows.append("".join(row_html))
+        for proyecto in city_projects:
+            row_values = [
+                materiales_map.get(proyecto),
+                torre_map.get(proyecto),
+                producto_map.get(proyecto),
+                zonas_map.get(proyecto),
+            ]
+            if mostrar_diseno:
+                row_values.append(diseno_map.get(proyecto))
+            row_values.append(curado_map.get(proyecto))
+
+            promedio_mes = average_values(row_values)
+            city_row_values.append(row_values + [promedio_mes])
+
+            row_html = [f"<tr><td>{proyecto}</td>"]
+            row_html.append(percent_cell_html(materiales_map.get(proyecto)))
+            row_html.append(percent_cell_html(torre_map.get(proyecto)))
+            row_html.append(percent_cell_html(producto_map.get(proyecto)))
+            row_html.append(percent_cell_html(zonas_map.get(proyecto)))
+            if mostrar_diseno:
+                row_html.append(percent_cell_html(diseno_map.get(proyecto)))
+            row_html.append(percent_cell_html(curado_map.get(proyecto)))
+            row_html.append(percent_cell_html(promedio_mes))
+            row_html.append("</tr>")
+            body_rows.append("".join(row_html))
+
+        city_columns_avg = []
+        total_columns = 7 if mostrar_diseno else 6
+        for col_idx in range(total_columns):
+            city_columns_avg.append(average_values(
+                row[col_idx] for row in city_row_values
+            ))
+
+        city_row_html = [f'<tr class="ig-city-row"><td>{ciudad}</td>']
+        for value in city_columns_avg:
+            city_row_html.append(percent_cell_html(value))
+        city_row_html.append("</tr>")
+        body_rows.append("".join(city_row_html))
 
     st.markdown(
         f'<div class="ig-wrap">'
