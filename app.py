@@ -635,6 +635,32 @@ def build_pending_controls_rows(df_ctrl, proyectos, show_repeat_count=False):
         ])
     ]
 
+
+def get_material_month_map(df_ens, month):
+    result = {}
+    for proyecto in sorted(df_ens["Proyecto"].dropna().unique().tolist()):
+        sub = df_ens[
+            (df_ens["Proyecto"] == proyecto) &
+            (df_ens["EsEjecutado"]) &
+            (df_ens["Mes"] == month)
+        ]
+        result[proyecto] = round(sub["Cantidad_num"].mean() * 100, 1) if not sub.empty else None
+    return result
+
+
+def get_control_month_map(df_ctrl, df_ens, area, month):
+    rows = build_heatmap_rows(df_ctrl, df_ens, area)
+    return {
+        row["label"]: row["values"][month - 1] if len(row["values"]) >= month else None
+        for row in rows
+    }
+
+
+def percent_cell_html(value):
+    if value is None or pd.isna(value):
+        return '<td class="hna"><strong>—</strong></td>'
+    return f'<td class="{hm_cls(float(value))}"><strong>{float(value):.0f}%</strong></td>'
+
 def build_heatmap_rows(df_ctrl, df_ens, area):
     rows = []
     ctrl_filtered = df_ctrl[control_area_mask(df_ctrl, area)].copy()
@@ -733,13 +759,96 @@ st.markdown(f"""
 </div><div style="height:8px"></div>
 """, unsafe_allow_html=True)
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab0, tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "📌  Informe General",
     "📊  Resumen General",
     "🏗️  Por Proyecto y Material",
     "📅  Línea de Tiempo y Alertas",
     "🔍  Consulta de Ensayos",
     "🛠️  Controles",
 ])
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 0
+# ══════════════════════════════════════════════════════════════════════════════
+with tab0:
+    default_mes_general = MESES[MESES_VENCIDOS[-1]] if MESES_VENCIDOS else list(MESES.values())[0]
+    default_mes_general_idx = ALL_M.index(default_mes_general) if default_mes_general in ALL_M else 1
+
+    gcol, _ = st.columns([1.2, 4.8])
+    with gcol:
+        sel0_mes = st.selectbox("Mes", ALL_M[1:], index=max(0, default_mes_general_idx - 1), key="t0m")
+
+    mes0_num = next((k for k, v in MESES.items() if v == sel0_mes), None)
+
+    st.markdown(section_header("Informe General", f"Resumen consolidado por proyecto para {sel0_mes}"), unsafe_allow_html=True)
+    st.markdown('<div class="dash-card">', unsafe_allow_html=True)
+
+    materiales_map = get_material_month_map(df_full, mes0_num)
+    torre_map = get_control_month_map(df_controles, df_full, "Torre", mes0_num)
+    producto_map = get_control_month_map(df_controles, df_full, "Producto terminado", mes0_num)
+    zonas_map = get_control_month_map(df_controles, df_full, "Zonas comunes", mes0_num)
+    diseno_map = get_control_month_map(df_controles, df_full, "Diseño", mes0_num)
+    curado_map = get_control_month_map(df_controles, df_full, "Curado", mes0_num)
+
+    mostrar_diseno = any(v is not None for v in diseno_map.values())
+    proyectos_general = sorted(
+        set(materiales_map.keys()) |
+        set(torre_map.keys()) |
+        set(producto_map.keys()) |
+        set(zonas_map.keys()) |
+        set(diseno_map.keys()) |
+        set(curado_map.keys())
+    )
+
+    header_cells = [
+        "<th>Proyecto</th>",
+        "<th>Control de Materiales</th>",
+        "<th>Control de Torre</th>",
+        "<th>Control de producto terminado</th>",
+        "<th>Control de Zonas comunes</th>",
+    ]
+    if mostrar_diseno:
+        header_cells.append("<th>Control de diseño</th>")
+    header_cells.extend([
+        "<th>Curado</th>",
+        "<th>Promedio mes</th>",
+    ])
+
+    body_rows = []
+    for proyecto in proyectos_general:
+        row_values = [
+            materiales_map.get(proyecto),
+            torre_map.get(proyecto),
+            producto_map.get(proyecto),
+            zonas_map.get(proyecto),
+        ]
+        if mostrar_diseno:
+            row_values.append(diseno_map.get(proyecto))
+        row_values.append(curado_map.get(proyecto))
+
+        valid_values = [float(v) for v in row_values if v is not None and not pd.isna(v)]
+        promedio_mes = round(sum(valid_values) / len(valid_values), 1) if valid_values else None
+
+        row_html = [f"<tr><td>{proyecto}</td>"]
+        row_html.append(percent_cell_html(materiales_map.get(proyecto)))
+        row_html.append(percent_cell_html(torre_map.get(proyecto)))
+        row_html.append(percent_cell_html(producto_map.get(proyecto)))
+        row_html.append(percent_cell_html(zonas_map.get(proyecto)))
+        if mostrar_diseno:
+            row_html.append(percent_cell_html(diseno_map.get(proyecto)))
+        row_html.append(percent_cell_html(curado_map.get(proyecto)))
+        row_html.append(percent_cell_html(promedio_mes))
+        row_html.append("</tr>")
+        body_rows.append("".join(row_html))
+
+    st.markdown(
+        f'<div style="overflow-x:auto;border-radius:10px;border:1px solid #E5E9F0;">'
+        f'<table class="rt"><thead><tr>{"".join(header_cells)}</tr></thead>'
+        f'<tbody>{"".join(body_rows)}</tbody></table></div>',
+        unsafe_allow_html=True
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 1
