@@ -1480,11 +1480,11 @@ with tab1:
             },
             "series": [{
                 "type": "pie",
-                "radius": ["40%", "62%"],
-                "center": ["50%", "36%"],
+                "radius": ["48%", "72%"],
+                "center": ["50%", "40%"],
                 "avoidLabelOverlap": True,
-                "label": {"show": True, "formatter": "{d}%", "fontFamily": "Inter, sans-serif", "fontSize": 10, "color": "#6B7280"},
-                "labelLine": {"show": True, "length": 8, "length2": 6},
+                "label": {"show": True, "formatter": "{d}%", "fontFamily": "Inter, sans-serif", "fontSize": 11, "color": "#6B7280"},
+                "labelLine": {"show": True, "length": 10, "length2": 8},
                 "itemStyle": {"borderColor": "#FFFFFF", "borderWidth": 2},
                 "data": [
                     {"name": row["Estado"], "value": int(row["n"]), "itemStyle": {"color": COLORS[row["Estado"]]}}
@@ -1497,7 +1497,7 @@ with tab1:
                 "top": "40%",
                 "style": {
                     "text": f"{len(df1):,}",
-                    "fontSize": 16,
+                    "fontSize": 18,
                     "fontWeight": 700,
                     "fontFamily": "Inter, sans-serif",
                     "fill": "#111827",
@@ -1506,7 +1506,7 @@ with tab1:
                 },
             }],
         }
-        render_echarts(donut_option, height=240)
+        render_echarts(donut_option, height=340)
         st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Tasa por proyecto ──
