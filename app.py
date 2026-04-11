@@ -180,14 +180,14 @@ div[data-testid="stTextInput"]>div>input:focus{border-color:#7BA7D4!important;bo
 .ig-table tr.ig-summary-row td.h25,
 .ig-table tr.ig-summary-row td.h0,
 .ig-table tr.ig-summary-row td.hna{background:#E9C9CC!important;}
-.ig-table tr.ig-corp-row td{background:#BAA1A3!important;border-top:1px solid #9F8487;border-bottom:1px solid #9F8487;font-weight:800;}
-.ig-table tr.ig-corp-row td:first-child{background:#BAA1A3!important;color:#5E1F28!important;text-transform:uppercase;letter-spacing:.05em;}
+.ig-table tr.ig-corp-row td{background:#C76771!important;border-top:1px solid #A84E57;border-bottom:1px solid #A84E57;font-weight:800;}
+.ig-table tr.ig-corp-row td:first-child{background:#C76771!important;color:#5E1F28!important;text-transform:uppercase;letter-spacing:.05em;}
 .ig-table tr.ig-corp-row td.h100,
 .ig-table tr.ig-corp-row td.h75,
 .ig-table tr.ig-corp-row td.h50,
 .ig-table tr.ig-corp-row td.h25,
 .ig-table tr.ig-corp-row td.h0,
-.ig-table tr.ig-corp-row td.hna{background:#BAA1A3!important;}
+.ig-table tr.ig-corp-row td.hna{background:#C76771!important;}
 .ig-table tr:last-child td{border-bottom:none;}
 .hml{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
 .hml span{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;}
@@ -687,6 +687,42 @@ def get_control_month_map(df_ctrl, df_ens, area, month):
     }
 
 
+def get_project_accumulated_map(df_ctrl, df_ens, selected_month, include_design):
+    monthly_material = {m: get_material_month_map(df_ens, m) for m in range(1, selected_month + 1)}
+    monthly_torre = {m: get_control_month_map(df_ctrl, df_ens, "Torre", m) for m in range(1, selected_month + 1)}
+    monthly_producto = {m: get_control_month_map(df_ctrl, df_ens, "Producto terminado", m) for m in range(1, selected_month + 1)}
+    monthly_zonas = {m: get_control_month_map(df_ctrl, df_ens, "Zonas comunes", m) for m in range(1, selected_month + 1)}
+    monthly_diseno = {m: get_control_month_map(df_ctrl, df_ens, "Diseño", m) for m in range(1, selected_month + 1)} if include_design else {}
+    monthly_curado = {m: get_control_month_map(df_ctrl, df_ens, "Curado", m) for m in range(1, selected_month + 1)}
+
+    proyectos = sorted(
+        set(df_ens["Proyecto"].dropna().tolist()) |
+        set(df_ctrl["Proyecto"].dropna().tolist())
+    )
+    accumulated = {}
+
+    for proyecto in proyectos:
+        month_averages = []
+        for month in range(1, selected_month + 1):
+            row_values = [
+                monthly_material[month].get(proyecto),
+                monthly_torre[month].get(proyecto),
+                monthly_producto[month].get(proyecto),
+                monthly_zonas[month].get(proyecto),
+            ]
+            if include_design:
+                row_values.append(monthly_diseno[month].get(proyecto))
+            row_values.append(monthly_curado[month].get(proyecto))
+
+            monthly_average = average_values(row_values)
+            if monthly_average is not None:
+                month_averages.append(monthly_average)
+
+        accumulated[proyecto] = average_values(month_averages)
+
+    return accumulated
+
+
 def get_project_city_map():
     frames = []
     for df in (df_full, df_controles):
@@ -886,13 +922,15 @@ with tab0:
     project_city_map = get_project_city_map()
 
     mostrar_diseno = any(v is not None for v in diseno_map.values())
+    acumulado_map = get_project_accumulated_map(df_controles, df_full, mes0_num, mostrar_diseno)
     proyectos_general = sorted(
         set(materiales_map.keys()) |
         set(torre_map.keys()) |
         set(producto_map.keys()) |
         set(zonas_map.keys()) |
         set(diseno_map.keys()) |
-        set(curado_map.keys())
+        set(curado_map.keys()) |
+        set(acumulado_map.keys())
     )
 
     header_cells = [
@@ -907,6 +945,7 @@ with tab0:
     header_cells.extend([
         "<th>Curado</th>",
         "<th>Promedio mes</th>",
+        "<th>Promedio acumulado</th>",
     ])
 
     city_groups = {}
@@ -932,8 +971,9 @@ with tab0:
             row_values.append(curado_map.get(proyecto))
 
             promedio_mes = average_values(row_values)
-            city_row_values.append(row_values + [promedio_mes])
-            corp_row_values.append(row_values + [promedio_mes])
+            promedio_acumulado = acumulado_map.get(proyecto)
+            city_row_values.append(row_values + [promedio_mes, promedio_acumulado])
+            corp_row_values.append(row_values + [promedio_mes, promedio_acumulado])
 
             row_html = [f"<tr><td>{proyecto}</td>"]
             row_html.append(percent_cell_html(materiales_map.get(proyecto)))
@@ -944,11 +984,12 @@ with tab0:
                 row_html.append(percent_cell_html(diseno_map.get(proyecto)))
             row_html.append(percent_cell_html(curado_map.get(proyecto)))
             row_html.append(percent_cell_html(promedio_mes))
+            row_html.append(percent_cell_html(promedio_acumulado))
             row_html.append("</tr>")
             body_rows.append("".join(row_html))
 
         city_columns_avg = []
-        total_columns = 7 if mostrar_diseno else 6
+        total_columns = 8 if mostrar_diseno else 7
         for col_idx in range(total_columns):
             city_columns_avg.append(average_values(
                 row[col_idx] for row in city_row_values
@@ -961,13 +1002,13 @@ with tab0:
         body_rows.append("".join(city_row_html))
 
     corp_columns_avg = []
-    total_columns = 7 if mostrar_diseno else 6
+    total_columns = 8 if mostrar_diseno else 7
     for col_idx in range(total_columns):
         corp_columns_avg.append(average_values(
             row[col_idx] for row in corp_row_values
         ))
 
-    corp_row_html = ['<tr class="ig-corp-row"><td>Total corporación</td>']
+    corp_row_html = ['<tr class="ig-corp-row"><td>Cusezar</td>']
     for value in corp_columns_avg:
         corp_row_html.append(percent_cell_html(value))
     corp_row_html.append("</tr>")
