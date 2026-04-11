@@ -173,7 +173,7 @@ div[data-testid="stTextInput"]>div>input:focus{border-color:#7BA7D4!important;bo
 .ig-table td{padding:7px 8px;border-bottom:1px solid #F1D9DB;color:#6B7280;text-align:center;line-height:1.15;word-break:break-word;}
 .ig-table td:first-child{background:#F8E8E8;color:#8F3942;font-weight:700;text-align:center;}
 .ig-table tr.ig-summary-row td{background:#FCF1F2!important;border-top:1px solid #DCA9AE;border-bottom:1px solid #DCA9AE;font-weight:700;}
-.ig-table tr.ig-summary-row td:first-child{background:#E9C9CC!important;color:#7D2F37!important;text-transform:uppercase;letter-spacing:.04em;}
+.ig-table tr.ig-summary-row td:first-child{background:#FCF1F2!important;color:#7D2F37!important;text-transform:uppercase;letter-spacing:.04em;}
 .ig-table tr.ig-summary-row td.h100,
 .ig-table tr.ig-summary-row td.h75,
 .ig-table tr.ig-summary-row td.h50,
@@ -181,7 +181,7 @@ div[data-testid="stTextInput"]>div>input:focus{border-color:#7BA7D4!important;bo
 .ig-table tr.ig-summary-row td.h0,
 .ig-table tr.ig-summary-row td.hna{background:#FCF1F2!important;}
 .inline-filter{display:flex;align-items:center;gap:4px;margin-bottom:2px;}
-.inline-filter-label{font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;}
+.inline-filter-label{font-size:13px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;line-height:1;}
 .inline-filter div[data-testid="stSelectbox"]{flex:1;}
 .inline-filter div[data-testid="stSelectbox"] > label{display:none!important;}
 .ig-table tr:last-child td{border-bottom:none;}
