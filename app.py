@@ -983,49 +983,36 @@ def build_tab2_tasa_df_from_summary(summary_df):
 
 
 @st.cache_data
-def build_tab5_precomputed_data(excel_signature):
+def get_tab5_view_data(excel_signature, ciudad, proyecto, area, pending_month_key):
     df_ensayos, df_ctrl = load_data(excel_signature)
 
-    ciudades = ["Todas"] + sorted(
-        set(df_ensayos["Ciudad"].dropna().tolist()) |
-        set(df_ctrl["Ciudad"].dropna().tolist())
+    if ciudad != "Todas":
+        if "Ciudad" in df_ctrl.columns:
+            df_ctrl = df_ctrl[df_ctrl["Ciudad"] == ciudad]
+        if "Ciudad" in df_ensayos.columns:
+            df_ensayos = df_ensayos[df_ensayos["Ciudad"] == ciudad]
+
+    if proyecto != "Todos":
+        if "Proyecto" in df_ctrl.columns:
+            df_ctrl = df_ctrl[df_ctrl["Proyecto"] == proyecto]
+        if "Proyecto" in df_ensayos.columns:
+            df_ensayos = df_ensayos[df_ensayos["Proyecto"] == proyecto]
+
+    rows5 = build_heatmap_rows(df_ctrl, df_ensayos, area)
+
+    df_pending = df_ctrl if pending_month_key == "Todos" else df_ctrl[df_ctrl["Mes"] == pending_month_key]
+    proyectos_tabla = sorted(
+        set(df_pending["Proyecto"].dropna().tolist()) |
+        set(df_ensayos["Proyecto"].dropna().tolist())
+    ) if {"Proyecto"}.issubset(df_pending.columns) and {"Proyecto"}.issubset(df_ensayos.columns) else []
+
+    pending_rows = build_pending_controls_rows(
+        df_pending,
+        proyectos_tabla,
+        show_repeat_count=(pending_month_key == "Todos"),
     )
-    proyectos = ["Todos"] + sorted(
-        set(df_ensayos["Proyecto"].dropna().tolist()) |
-        set(df_ctrl["Proyecto"].dropna().tolist())
-    )
-    month_keys = ["Todos"] + list(range(1, 13))
 
-    heatmap_lookup = {}
-    pending_lookup = {}
-
-    for ciudad in ciudades:
-        df_ctrl_ciud = df_ctrl if ciudad == "Todas" else df_ctrl[df_ctrl["Ciudad"] == ciudad]
-        df_ens_ciud = df_ensayos if ciudad == "Todas" else df_ensayos[df_ensayos["Ciudad"] == ciudad]
-
-        for proyecto in proyectos:
-            df_ctrl_scope = df_ctrl_ciud if proyecto == "Todos" else df_ctrl_ciud[df_ctrl_ciud["Proyecto"] == proyecto]
-            df_ens_scope = df_ens_ciud if proyecto == "Todos" else df_ens_ciud[df_ens_ciud["Proyecto"] == proyecto]
-
-            for area in CONTROL_AREA_OPTIONS:
-                heatmap_lookup[(ciudad, proyecto, area)] = build_heatmap_rows(df_ctrl_scope, df_ens_scope, area)
-
-            for month_key in month_keys:
-                df_pending = df_ctrl_scope if month_key == "Todos" else df_ctrl_scope[df_ctrl_scope["Mes"] == month_key]
-                proyectos_tabla = sorted(
-                    set(df_pending["Proyecto"].dropna().tolist()) |
-                    set(df_ens_scope["Proyecto"].dropna().tolist())
-                )
-                pending_lookup[(ciudad, proyecto, month_key)] = build_pending_controls_rows(
-                    df_pending,
-                    proyectos_tabla,
-                    show_repeat_count=(month_key == "Todos"),
-                )
-
-    return {
-        "heatmap_lookup": heatmap_lookup,
-        "pending_lookup": pending_lookup,
-    }
+    return rows5, pending_rows
 
 
 def average_values(values):
@@ -1778,16 +1765,33 @@ with tab5:
     sel5_ciud = c5a.selectbox("Ciudad", ALL_CIUD, key="t5c")
     sel5_proy = c5b.selectbox("Proyecto", ALL_PC, key="t5p")
     sel5_area = c5c.selectbox("Control", CONTROL_AREA_OPTIONS, index=0, key="t5a")
+    pend_col, _ = st.columns([1.2, 4.8])
+    with pend_col:
+        sel5_pend_mes = st.selectbox("Mes", ALL_M, key="t5_pending_mes")
+    pending_month_key = "Todos" if sel5_pend_mes == "Todos" else next((k for k, v in MESES.items() if v == sel5_pend_mes), "Todos")
 
-    tab5_data = build_tab5_precomputed_data(EXCEL_SIGNATURE)
+    tab5_error = None
+    rows5 = []
+    pending_rows = []
+    try:
+        rows5, pending_rows = get_tab5_view_data(
+            EXCEL_SIGNATURE,
+            sel5_ciud,
+            sel5_proy,
+            sel5_area,
+            pending_month_key,
+        )
+    except Exception as exc:
+        tab5_error = str(exc)
 
     title5 = control_area_title(sel5_area)
     st.markdown(section_header(title5, "Promedio mensual con 12 meses fijos. Los registros sin valor no se incluyen en el cálculo."), unsafe_allow_html=True)
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
     st.markdown(heatmap_legend(), unsafe_allow_html=True)
 
-    rows5 = tab5_data["heatmap_lookup"].get((sel5_ciud, sel5_proy, sel5_area), [])
-    if rows5:
+    if tab5_error:
+        st.warning("No fue posible construir el heatmap de controles con la estructura actual del Excel.")
+    elif rows5:
         heatmap5_option, heatmap5_height = build_echarts_heatmap_config(rows5)
         render_echarts(heatmap5_option, height=heatmap5_height)
     else:
@@ -1797,13 +1801,9 @@ with tab5:
     st.markdown(section_header("Controles pendientes", "Controles con valor 0 o 0,5 agrupados por proyecto"), unsafe_allow_html=True)
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
 
-    pend_col, _ = st.columns([1.2, 4.8])
-    with pend_col:
-        sel5_pend_mes = st.selectbox("Mes", ALL_M, key="t5_pending_mes")
-    pending_month_key = "Todos" if sel5_pend_mes == "Todos" else next((k for k, v in MESES.items() if v == sel5_pend_mes), "Todos")
-    pending_rows = tab5_data["pending_lookup"].get((sel5_ciud, sel5_proy, pending_month_key), [])
-
-    if pending_rows:
+    if tab5_error:
+        st.warning("No fue posible construir la tabla de pendientes de controles con la estructura actual del Excel.")
+    elif pending_rows:
         rows_html = "".join(
             f"<tr>"
             f"<td>{row['Proyecto']}</td>"
