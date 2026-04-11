@@ -410,56 +410,6 @@ def heatmap_legend():
       <span style="font-size:11px;color:#9CA3AF;margin-left:4px;">· Meta: {META}%</span>
     </div>"""
 
-def render_heatmap_table(first_col_label, rows_data):
-    col_values = {m: [] for m in range(12)}
-    body_rows = []
-
-    for row in rows_data:
-        row_vals = [v for v in row["values"] if v is not None]
-        row_avg = round(sum(row_vals) / len(row_vals), 1) if row_vals else None
-        row_html = [f'<tr><td class="hmpn">{row["label"]}</td>']
-        for idx, val in enumerate(row["values"]):
-            if val is None:
-                row_html.append('<td class="hna">—</td>')
-            else:
-                col_values[idx].append(val)
-                title = row.get("titles", [None] * 12)[idx]
-                title_attr = f' title="{title}"' if title else ""
-                row_html.append(f'<td class="{hm_cls(val)}"{title_attr}>{val:.0f}%</td>')
-        if row_avg is None:
-            row_html.append('<td class="hna"><strong>—</strong></td>')
-        else:
-            row_html.append(f'<td class="{hm_cls(row_avg)}" title="Promedio de la fila"><strong>{row_avg:.0f}%</strong></td>')
-        row_html.append("</tr>")
-        body_rows.append("".join(row_html))
-
-    avg_row = ['<tr><td class="hmpn"><strong>Promedio</strong></td>']
-    avg_row_values = []
-    for idx in range(12):
-        vals = col_values[idx]
-        if vals:
-            avg_val = round(sum(vals) / len(vals), 1)
-            avg_row_values.append(avg_val)
-            avg_row.append(f'<td class="{hm_cls(avg_val)}" title="Promedio de la columna"><strong>{avg_val:.0f}%</strong></td>')
-        else:
-            avg_row.append('<td class="hna"><strong>—</strong></td>')
-    grand_vals = [v for v in avg_row_values if v is not None]
-    if grand_vals:
-        grand_avg = round(sum(grand_vals) / len(grand_vals), 1)
-        avg_row.append(f'<td class="{hm_cls(grand_avg)}" title="Promedio general"><strong>{grand_avg:.0f}%</strong></td>')
-    else:
-        avg_row.append('<td class="hna"><strong>—</strong></td>')
-    avg_row.append("</tr>")
-    body_rows.append("".join(avg_row))
-
-    ths = "".join(f"<th>{MESES[m][:3]}</th>" for m in range(1, 13))
-    ths += "<th>Prom.</th>"
-    return (
-        f'<div class="hm-wrap"><table class="hm-table"><thead><tr><th class="hmp">{first_col_label}</th>{ths}</tr></thead>'
-        f'<tbody>{"".join(body_rows)}</tbody></table></div>'
-    )
-
-
 HEATMAP_RANGE_COLORS = {
     "na": "#F8F9FB",
     "lt25": "#F0C8C8",
@@ -606,14 +556,6 @@ def control_area_mask(df, area):
         return (df["Area"] == area) & (~df["Etapa"].astype(str).str.contains("Producto terminado", case=False, na=False))
     return df["Area"] == area
 
-def control_row_label(row):
-    etapa = str(row.get("Etapa", "")).strip()
-    control = str(row.get("Control", "")).strip()
-    if not etapa or etapa in {"-", "nan", "None"}:
-        return control
-    return f"{etapa} - {control}"
-
-
 def build_pending_controls_rows(df_ctrl, proyectos, show_repeat_count=False):
     pending_df = df_ctrl[df_ctrl["Valor_num"].isin([0, 0.5])].copy()
     rows = []
@@ -686,110 +628,11 @@ def get_material_month_map(df_ens, month):
     return result
 
 
-def get_control_month_map(df_ctrl, df_ens, area, month):
-    rows = build_heatmap_rows(df_ctrl, df_ens, area)
-    return {
-        row["label"]: row["values"][month - 1] if len(row["values"]) >= month else None
-        for row in rows
-    }
-
 def month_map_from_rows(rows, month):
     return {
         row["label"]: row["values"][month - 1] if len(row["values"]) >= month else None
         for row in rows
     }
-
-
-def get_project_accumulated_map(df_ctrl, df_ens, selected_month, include_design):
-    monthly_material = {m: get_material_month_map(df_ens, m) for m in range(1, selected_month + 1)}
-    monthly_torre = {m: get_control_month_map(df_ctrl, df_ens, "Torre", m) for m in range(1, selected_month + 1)}
-    monthly_producto = {m: get_control_month_map(df_ctrl, df_ens, "Producto terminado", m) for m in range(1, selected_month + 1)}
-    monthly_zonas = {m: get_control_month_map(df_ctrl, df_ens, "Zonas comunes", m) for m in range(1, selected_month + 1)}
-    monthly_diseno = {m: get_control_month_map(df_ctrl, df_ens, "Diseño", m) for m in range(1, selected_month + 1)} if include_design else {}
-    monthly_curado = {m: get_control_month_map(df_ctrl, df_ens, "Curado", m) for m in range(1, selected_month + 1)}
-
-    proyectos = sorted(
-        set(df_ens["Proyecto"].dropna().tolist()) |
-        set(df_ctrl["Proyecto"].dropna().tolist())
-    )
-    accumulated = {}
-
-    for proyecto in proyectos:
-        month_averages = []
-        for month in range(1, selected_month + 1):
-            row_values = [
-                monthly_material[month].get(proyecto),
-                monthly_torre[month].get(proyecto),
-                monthly_producto[month].get(proyecto),
-                monthly_zonas[month].get(proyecto),
-            ]
-            if include_design:
-                row_values.append(monthly_diseno[month].get(proyecto))
-            row_values.append(monthly_curado[month].get(proyecto))
-
-            monthly_average = average_values(row_values)
-            if monthly_average is not None:
-                month_averages.append(monthly_average)
-
-        accumulated[proyecto] = average_values(month_averages)
-
-    return accumulated
-
-
-def get_city_month_chart_data(df_ctrl, df_ens, project_city_map):
-    monthly_material = {m: get_material_month_map(df_ens, m) for m in range(1, 13)}
-    monthly_torre = {m: get_control_month_map(df_ctrl, df_ens, "Torre", m) for m in range(1, 13)}
-    monthly_producto = {m: get_control_month_map(df_ctrl, df_ens, "Producto terminado", m) for m in range(1, 13)}
-    monthly_zonas = {m: get_control_month_map(df_ctrl, df_ens, "Zonas comunes", m) for m in range(1, 13)}
-    monthly_diseno = {m: get_control_month_map(df_ctrl, df_ens, "Diseño", m) for m in range(1, 13)}
-    monthly_curado = {m: get_control_month_map(df_ctrl, df_ens, "Curado", m) for m in range(1, 13)}
-
-    proyectos = sorted(
-        set(df_ens["Proyecto"].dropna().tolist()) |
-        set(df_ctrl["Proyecto"].dropna().tolist())
-    )
-
-    include_design = any(
-        value is not None
-        for month_map in monthly_diseno.values()
-        for value in month_map.values()
-    )
-
-    city_month_values = {}
-    cusezar_series = []
-
-    for month in range(1, 13):
-        month_city_values = {}
-        for proyecto in proyectos:
-            row_values = [
-                monthly_material[month].get(proyecto),
-                monthly_torre[month].get(proyecto),
-                monthly_producto[month].get(proyecto),
-                monthly_zonas[month].get(proyecto),
-            ]
-            if include_design:
-                row_values.append(monthly_diseno[month].get(proyecto))
-            row_values.append(monthly_curado[month].get(proyecto))
-
-            promedio_mes = average_values(row_values)
-            if promedio_mes is None:
-                continue
-
-            ciudad = project_city_map.get(normalize_project_key(proyecto), "Sin ciudad")
-            month_city_values.setdefault(ciudad, []).append(promedio_mes)
-
-        month_city_avg = {
-            ciudad: average_values(values)
-            for ciudad, values in month_city_values.items()
-        }
-
-        for ciudad, value in month_city_avg.items():
-            city_month_values.setdefault(ciudad, [None] * 12)
-            city_month_values[ciudad][month - 1] = value
-
-        cusezar_series.append(average_values(month_city_avg.values()))
-
-    return city_month_values, cusezar_series
 
 
 def sanitize_echarts_series(values):
@@ -1024,6 +867,150 @@ def build_tab0_precomputed_data(excel_signature):
         "include_design": include_design,
         "accumulated_maps": accumulated_maps,
         "city_chart_config": build_city_combo_chart_config_from_series(city_month_series, cusezar_month_series),
+    }
+
+
+@st.cache_data
+def build_tab2_precomputed_data(excel_signature):
+    df_ensayos, _ = load_data(excel_signature)
+    summary = df_ensayos.copy()
+    summary["comp"] = (summary["Cantidad_num"] == 1).astype(int)
+    summary["inc"] = (summary["Cantidad_num"] == 0.5).astype(int)
+    summary["no_r"] = (summary["Cantidad_num"] == 0).astype(int)
+    summary["ejecuted"] = summary["EsEjecutado"].astype(int)
+    summary["planned"] = (summary["Cantidad"] == "*").astype(int)
+
+    grouped = (
+        summary.groupby(["Proyecto", "ETAPA", "MATERIAL", "Mes"], dropna=False)
+        .agg(
+            comp=("comp", "sum"),
+            inc=("inc", "sum"),
+            no_r=("no_r", "sum"),
+            executed=("ejecuted", "sum"),
+            planned=("planned", "sum"),
+        )
+        .reset_index()
+    )
+    return grouped
+
+
+def filter_tab2_summary(summary_df, proyecto, etapa, material):
+    filtered = summary_df.copy()
+    if proyecto != "Todos":
+        filtered = filtered[filtered["Proyecto"] == proyecto]
+    if etapa != "Todas":
+        filtered = filtered[filtered["ETAPA"] == etapa]
+    if material != "Todos":
+        filtered = filtered[filtered["MATERIAL"] == material]
+    return filtered
+
+
+def build_tab2_heatmap_rows_from_summary(summary_df):
+    rows_hm = []
+    if summary_df.empty:
+        return rows_hm
+
+    for proyecto in sorted(summary_df["Proyecto"].dropna().unique().tolist()):
+        values = []
+        titles = []
+        proy_df = summary_df[summary_df["Proyecto"] == proyecto]
+        for month in range(1, 13):
+            sub = proy_df[proy_df["Mes"] == month]
+            if sub.empty:
+                values.append(None)
+                titles.append(None)
+                continue
+
+            comp = int(sub["comp"].sum())
+            inc = int(sub["inc"].sum())
+            no_r = int(sub["no_r"].sum())
+            executed = int(sub["executed"].sum())
+            planned = int(sub["planned"].sum())
+
+            if executed == 0:
+                values.append(None)
+                titles.append("Plan." if planned > 0 else None)
+                continue
+
+            cumplimiento = round(((comp + inc * 0.5) / executed) * 100, 1)
+            values.append(cumplimiento)
+            titles.append(f"{comp} compl. · {inc} incompl. · {no_r} no-real · Ejecutados: {executed}")
+
+        rows_hm.append({"label": proyecto, "values": values, "titles": titles})
+
+    return rows_hm
+
+
+def build_tab2_tasa_df_from_summary(summary_df):
+    if summary_df.empty:
+        return pd.DataFrame(columns=["Proyecto", "tasa", "comp", "inc", "no_r", "tot"])
+
+    vencidos = summary_df[summary_df["Mes"].isin(MESES_VENCIDOS)].copy()
+    if vencidos.empty:
+        return pd.DataFrame(columns=["Proyecto", "tasa", "comp", "inc", "no_r", "tot"])
+
+    rows = []
+    for proyecto, group in vencidos.groupby("Proyecto", sort=True):
+        comp = int(group["comp"].sum())
+        inc = int(group["inc"].sum())
+        no_r = int(group["no_r"].sum())
+        tot = int((group["executed"] + group["planned"]).sum())
+        tasa = round(((comp + inc * 0.5) / tot) * 100, 1) if tot > 0 else 0.0
+        rows.append({
+            "Proyecto": proyecto,
+            "tasa": tasa,
+            "comp": comp,
+            "inc": inc,
+            "no_r": no_r,
+            "tot": tot,
+        })
+
+    return pd.DataFrame(rows).sort_values("tasa", ascending=False)
+
+
+@st.cache_data
+def build_tab5_precomputed_data(excel_signature):
+    df_ensayos, df_ctrl = load_data(excel_signature)
+
+    ciudades = ["Todas"] + sorted(
+        set(df_ensayos["Ciudad"].dropna().tolist()) |
+        set(df_ctrl["Ciudad"].dropna().tolist())
+    )
+    proyectos = ["Todos"] + sorted(
+        set(df_ensayos["Proyecto"].dropna().tolist()) |
+        set(df_ctrl["Proyecto"].dropna().tolist())
+    )
+    month_keys = ["Todos"] + list(range(1, 13))
+
+    heatmap_lookup = {}
+    pending_lookup = {}
+
+    for ciudad in ciudades:
+        df_ctrl_ciud = df_ctrl if ciudad == "Todas" else df_ctrl[df_ctrl["Ciudad"] == ciudad]
+        df_ens_ciud = df_ensayos if ciudad == "Todas" else df_ensayos[df_ensayos["Ciudad"] == ciudad]
+
+        for proyecto in proyectos:
+            df_ctrl_scope = df_ctrl_ciud if proyecto == "Todos" else df_ctrl_ciud[df_ctrl_ciud["Proyecto"] == proyecto]
+            df_ens_scope = df_ens_ciud if proyecto == "Todos" else df_ens_ciud[df_ens_ciud["Proyecto"] == proyecto]
+
+            for area in CONTROL_AREA_OPTIONS:
+                heatmap_lookup[(ciudad, proyecto, area)] = build_heatmap_rows(df_ctrl_scope, df_ens_scope, area)
+
+            for month_key in month_keys:
+                df_pending = df_ctrl_scope if month_key == "Todos" else df_ctrl_scope[df_ctrl_scope["Mes"] == month_key]
+                proyectos_tabla = sorted(
+                    set(df_pending["Proyecto"].dropna().tolist()) |
+                    set(df_ens_scope["Proyecto"].dropna().tolist())
+                )
+                pending_lookup[(ciudad, proyecto, month_key)] = build_pending_controls_rows(
+                    df_pending,
+                    proyectos_tabla,
+                    show_repeat_count=(month_key == "Todos"),
+                )
+
+    return {
+        "heatmap_lookup": heatmap_lookup,
+        "pending_lookup": pending_lookup,
     }
 
 
@@ -1504,32 +1491,14 @@ with tab2:
     sel2_mat   = f2c.selectbox("Material", ALL_MAT, key="t2m")
 
     df2 = filt(filt(filt(df_full, "Proyecto", sel2_proy, "Todos"), "ETAPA", sel2_etapa, "Todas"), "MATERIAL", sel2_mat, "Todos")
-    ex2 = df2[df2["EsEjecutado"]].copy()
+    tab2_summary = filter_tab2_summary(build_tab2_precomputed_data(EXCEL_SIGNATURE), sel2_proy, sel2_etapa, sel2_mat)
 
     # ── Heatmap ──
     st.markdown(section_header('Heatmap de Cumplimiento — Proyecto × Mes', 'Tasa = promedio de valores ejecutados (0, 0.5, 1). "Plan." = sin datos ejecutados ese mes.'), unsafe_allow_html=True)
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
     st.markdown(heatmap_legend(), unsafe_allow_html=True)
 
-    rows_hm = []
-    for p in sorted(df2["Proyecto"].unique()):
-        values = []
-        titles = []
-        for m in range(1, 13):
-            sub_hm = ex2[(ex2["Proyecto"]==p) & (ex2["Mes"]==m)]
-            if len(sub_hm) == 0:
-                has_plan = len(df2[(df2["Proyecto"]==p) & (df2["Mes"]==m) & (df2["Cantidad"]=="*")]) > 0
-                values.append(None)
-                titles.append("Plan." if has_plan else None)
-            else:
-                cn = int((sub_hm["Cantidad_num"]==1).sum())
-                iN = int((sub_hm["Cantidad_num"]==0.5).sum())
-                nn = int((sub_hm["Cantidad_num"]==0).sum())
-                prom = sub_hm["Cantidad_num"].mean()
-                t = round(prom * 100, 1) if pd.notna(prom) else 0.0
-                values.append(t)
-                titles.append(f"{cn} compl. · {iN} incompl. · {nn} no-real · Promedio: {prom:.2f}")
-        rows_hm.append({"label": p, "values": values, "titles": titles})
+    rows_hm = build_tab2_heatmap_rows_from_summary(tab2_summary)
 
     heatmap_option, heatmap_height = build_echarts_heatmap_config(rows_hm)
     render_echarts(heatmap_option, height=heatmap_height)
@@ -1539,17 +1508,7 @@ with tab2:
     st.markdown(section_header("Tasa de Cumplimiento por Proyecto", f"% de completos sobre el total planeado en meses vencidos ({meses_vencidos_label}) · Meta: {META}%"), unsafe_allow_html=True)
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
     if not df2.empty:
-        t_df = (df2.groupby("Proyecto")
-                   .apply(lambda g: pd.Series({
-                       "tasa": round((((g["Cantidad_num"] == 1).sum()) + ((g["Cantidad_num"] == 0.5).sum() * 0.5)) / len(g[g["Mes"].isin(MESES_VENCIDOS)]) * 100, 1)
-                               if len(g[g["Mes"].isin(MESES_VENCIDOS)]) > 0 else 0.0,
-                       "comp": int((g["Cantidad_num"] == 1).sum()),
-                       "inc": int((g["Cantidad_num"] == 0.5).sum()),
-                       "no_r": int((g["Cantidad_num"] == 0).sum()),
-                       "tot": len(g[g["Mes"].isin(MESES_VENCIDOS)]),
-                   }))
-                   .reset_index()
-                   .sort_values("tasa", ascending=False))
+        t_df = build_tab2_tasa_df_from_summary(tab2_summary)
         tasa_option = {
             "textStyle": {"fontFamily": "Inter, sans-serif"},
             "tooltip": {
@@ -1791,21 +1750,14 @@ with tab5:
     sel5_proy = c5b.selectbox("Proyecto", ALL_PC, key="t5p")
     sel5_area = c5c.selectbox("Control", CONTROL_AREA_OPTIONS, index=0, key="t5a")
 
-    df5_ctrl = df_controles.copy()
-    df5_ens = df_full.copy()
-    if sel5_ciud != "Todas":
-        df5_ctrl = df5_ctrl[df5_ctrl["Ciudad"] == sel5_ciud]
-        df5_ens = df5_ens[df5_ens["Ciudad"] == sel5_ciud]
-    if sel5_proy != "Todos":
-        df5_ctrl = df5_ctrl[df5_ctrl["Proyecto"] == sel5_proy]
-        df5_ens = df5_ens[df5_ens["Proyecto"] == sel5_proy]
+    tab5_data = build_tab5_precomputed_data(EXCEL_SIGNATURE)
 
     title5 = control_area_title(sel5_area)
     st.markdown(section_header(title5, "Promedio mensual con 12 meses fijos. Los registros sin valor no se incluyen en el cálculo."), unsafe_allow_html=True)
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
     st.markdown(heatmap_legend(), unsafe_allow_html=True)
 
-    rows5 = build_heatmap_rows(df5_ctrl, df5_ens, sel5_area)
+    rows5 = tab5_data["heatmap_lookup"].get((sel5_ciud, sel5_proy, sel5_area), [])
     if rows5:
         heatmap5_option, heatmap5_height = build_echarts_heatmap_config(rows5)
         render_echarts(heatmap5_option, height=heatmap5_height)
@@ -1819,19 +1771,8 @@ with tab5:
     pend_col, _ = st.columns([1.2, 4.8])
     with pend_col:
         sel5_pend_mes = st.selectbox("Mes", ALL_M, key="t5_pending_mes")
-    df5_pending = df5_ctrl.copy()
-    if sel5_pend_mes != "Todos":
-        df5_pending = df5_pending[df5_pending["Mes"].isin([k for k, v in MESES.items() if v == sel5_pend_mes])]
-
-    proyectos_tabla = sorted(
-        set(df5_pending["Proyecto"].dropna().tolist()) |
-        set(df5_ens["Proyecto"].dropna().tolist())
-    )
-    pending_rows = build_pending_controls_rows(
-        df5_pending,
-        proyectos_tabla,
-        show_repeat_count=(sel5_pend_mes == "Todos"),
-    )
+    pending_month_key = "Todos" if sel5_pend_mes == "Todos" else next((k for k, v in MESES.items() if v == sel5_pend_mes), "Todos")
+    pending_rows = tab5_data["pending_lookup"].get((sel5_ciud, sel5_proy, pending_month_key), [])
 
     if pending_rows:
         rows_html = "".join(
