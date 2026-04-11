@@ -548,15 +548,25 @@ def control_area_title(area):
     }.get(area, f"Control de {area}")
 
 def control_area_mask(df, area):
+    if df is None or "Area" not in df.columns:
+        return pd.Series([False] * len(df), index=df.index if df is not None else pd.Index([]))
     if area == "Curado":
+        if "Control" not in df.columns:
+            return pd.Series([False] * len(df), index=df.index)
         return (df["Area"] == "-") & (df["Control"] == "Curado")
     if area == "Producto terminado":
         return pd.Series([False] * len(df), index=df.index)
     if area == "Torre":
+        if "Etapa" not in df.columns:
+            return df["Area"] == area
         return (df["Area"] == area) & (~df["Etapa"].astype(str).str.contains("Producto terminado", case=False, na=False))
     return df["Area"] == area
 
 def build_pending_controls_rows(df_ctrl, proyectos, show_repeat_count=False):
+    required_cols = {"Proyecto", "Area", "Etapa", "Control", "Valor_num"}
+    if df_ctrl is None or not required_cols.issubset(df_ctrl.columns):
+        return []
+
     pending_df = df_ctrl[df_ctrl["Valor_num"].isin([0, 0.5])].copy()
     rows = []
 
@@ -617,6 +627,10 @@ def build_pending_controls_rows(df_ctrl, proyectos, show_repeat_count=False):
 
 
 def get_material_month_map(df_ens, month):
+    required_cols = {"Proyecto", "EsEjecutado", "Mes", "Cantidad_num"}
+    if df_ens is None or not required_cols.issubset(df_ens.columns):
+        return {}
+
     result = {}
     for proyecto in sorted(df_ens["Proyecto"].dropna().unique().tolist()):
         sub = df_ens[
@@ -1034,6 +1048,21 @@ def percent_cell_html(value):
     return f'<td class="{cls}" style="color:{color};"><strong>{float(value):.0f}%</strong></td>'
 
 def build_heatmap_rows(df_ctrl, df_ens, area):
+    ctrl_required = {"Proyecto", "Area", "Etapa", "Control", "Mes", "Valor_num"}
+    ens_required = {"Proyecto", "ETAPA", "MATERIAL", "ENSAYO", "Mes", "Cantidad_num"}
+
+    if df_ctrl is None:
+        df_ctrl = pd.DataFrame(columns=list(ctrl_required) + ["Valor"])
+    if df_ens is None:
+        df_ens = pd.DataFrame(columns=list(ens_required))
+
+    for col in ctrl_required | {"Valor"}:
+        if col not in df_ctrl.columns:
+            df_ctrl[col] = pd.Series(dtype="object")
+    for col in ens_required:
+        if col not in df_ens.columns:
+            df_ens[col] = pd.Series(dtype="object")
+
     rows = []
     ctrl_filtered = df_ctrl[control_area_mask(df_ctrl, area)].copy()
     if area == "Producto terminado":
