@@ -107,20 +107,21 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
 html,body,[class*="css"]{font-family:'Inter',sans-serif!important;}
-#MainMenu,footer{visibility:hidden;}
-.block-container{padding-top:0!important;max-width:100%!important;padding-left:2rem!important;padding-right:2rem!important;}
-[data-testid="stSidebar"]{display:none;}
-.app-header{background:#fff;border-bottom:1px solid #E5E9F0;padding:14px 32px;display:flex;align-items:center;justify-content:space-between;margin:-1rem -2rem 0 -2rem;position:sticky;top:0;z-index:100;box-shadow:0 1px 6px rgba(15,23,42,.07);}
-.logo-box{width:36px;height:36px;background:linear-gradient(135deg,#7BA7D4,#4A7BA8);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;}
-.app-title{font-size:16px;font-weight:700;color:#111827;margin:0;}
-.app-sub{font-size:11px;color:#9CA3AF;font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin:0;}
-.hdr-badge{background:#EEF3FA;color:#4A7BA8;font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;}
-.hdr-date{font-size:12px;color:#9CA3AF;font-family:'DM Mono',monospace;}
-.stTabs [data-baseweb="tab-list"]{background:#fff;border-bottom:1px solid #E5E9F0;padding:0;gap:0;margin:0 -2rem;padding-left:2rem;}
-.stTabs [data-baseweb="tab"]{font-size:13px!important;font-weight:600!important;color:#9CA3AF!important;padding:14px 22px!important;border-bottom:2px solid transparent!important;background:transparent!important;}
-.stTabs [aria-selected="true"]{color:#4A7BA8!important;border-bottom-color:#4A7BA8!important;}
-.stTabs [data-baseweb="tab-panel"]{padding-top:24px;}
-.stTabs [data-baseweb="tab-highlight"]{display:none;}
+#MainMenu,footer,header[data-testid="stHeader"]{visibility:hidden;height:0;}
+.block-container{padding-top:1.25rem!important;max-width:100%!important;padding-left:2rem!important;padding-right:2rem!important;}
+[data-testid="stSidebar"]{display:block!important;background:#F8FAFC;border-right:1px solid #E5E9F0;min-width:250px;max-width:250px;}
+[data-testid="stSidebar"] > div:first-child{padding-top:1.25rem;}
+[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{gap:.35rem;}
+.sidebar-brand{font-size:18px;font-weight:800;color:#111827;line-height:1.2;margin-bottom:4px;}
+.sidebar-sub{font-size:11px;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px;}
+[data-testid="stSidebar"] .stRadio > label{display:none;}
+[data-testid="stSidebar"] .stRadio [role="radiogroup"]{gap:8px;}
+[data-testid="stSidebar"] .stRadio [role="radio"]{background:#FFFFFF;border:1px solid #E5E9F0;border-radius:12px;padding:10px 12px;color:#475569;font-size:13px;font-weight:600;box-shadow:0 1px 3px rgba(15,23,42,.04);}
+[data-testid="stSidebar"] .stRadio [role="radio"][aria-checked="true"]{background:#EEF3FA;border-color:#C8DCF0;color:#4A7BA8;box-shadow:0 4px 14px rgba(74,123,168,.08);}
+[data-testid="stSidebar"] .stRadio [role="radio"]:hover{border-color:#CBD5E1;}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:0 0 18px 0;padding-bottom:10px;border-bottom:1px solid #E5E9F0;}
+.page-title{font-size:24px;font-weight:800;color:#111827;line-height:1.1;margin:0;}
+.page-sub{font-size:12px;color:#9CA3AF;margin:4px 0 0 0;}
 .filter-bar{margin-bottom:16px;}
 .filter-bar-title{display:none;}
 div[data-testid="stSelectbox"]>label{font-size:11px!important;font-weight:600!important;color:#6B7280!important;text-transform:uppercase!important;letter-spacing:.05em!important;margin-bottom:4px!important;}
@@ -422,6 +423,14 @@ def section_header(title, subtitle=""):
         f'<div class="section-title">{title}</div>'
         f'{subtitle_html}'
         f'</div>'
+    )
+
+
+def render_page_heading(title, subtitle=""):
+    subtitle_html = f'<div class="page-sub">{subtitle}</div>' if subtitle else ""
+    st.markdown(
+        f'<div class="page-head"><div><div class="page-title">{title}</div>{subtitle_html}</div></div>',
+        unsafe_allow_html=True
     )
 
 def get_kpis(df):
@@ -1260,34 +1269,34 @@ def build_heatmap_rows(df_ctrl, df_ens, area):
 
     return rows
 
-# ── HEADER ─────────────────────────────────────────────────────────────────────
-st.markdown(f"""
-<div style="height:28px"></div>
-<div class="app-header">
-  <div style="display:flex;align-items:center;gap:12px;">
-    <div class="logo-box">🏗️</div>
-    <div><p class="app-title">Plan de Ensayos 2026</p>
-         <p class="app-sub">Panel de Control de Calidad · Cusezar</p></div>
-  </div>
-  <div style="display:flex;align-items:center;gap:14px;">
-    <span class="hdr-badge">{df_full['Proyecto'].nunique()} Proyectos · {len(df_full):,} Ensayos</span>
-    <span class="hdr-date">Datos hasta: {mes_label}</span>
-  </div>
-</div><div style="height:8px"></div>
-""", unsafe_allow_html=True)
+NAV_OPTIONS = {
+    "Informe General": "⌂  Informe General",
+    "Ensayos": "◫  Ensayos",
+    "Línea de Tiempo y Alertas": "◎  Línea de Tiempo y Alertas",
+    "Consulta de Ensayos": "⌕  Consulta de Ensayos",
+    "Controles": "☷  Controles",
+}
 
-tab0, tab1, tab3, tab4, tab5 = st.tabs([
-    "📌  Informe General",
-    "📊  Ensayos",
-    "📅  Línea de Tiempo y Alertas",
-    "🔍  Consulta de Ensayos",
-    "🛠️  Controles",
-])
+with st.sidebar:
+    st.markdown('<div class="sidebar-brand">Calidad - Cusezar</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-sub">Panel de navegación</div>', unsafe_allow_html=True)
+    current_page = st.radio(
+        "Navegación",
+        list(NAV_OPTIONS.keys()),
+        format_func=lambda key: NAV_OPTIONS[key],
+        label_visibility="collapsed",
+    )
+    st.markdown(
+        f'<div class="sidebar-sub" style="margin-top:12px;">{df_full["Proyecto"].nunique()} proyectos · {len(df_full):,} ensayos</div>',
+        unsafe_allow_html=True
+    )
+    st.caption(f"Datos hasta: {mes_label}")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 0
 # ══════════════════════════════════════════════════════════════════════════════
-with tab0:
+if current_page == "Informe General":
+    render_page_heading("Informe General", "Resumen consolidado del tablero de calidad")
     default_mes_general = MESES[MESES_VENCIDOS[-1]] if MESES_VENCIDOS else list(MESES.values())[0]
     default_mes_general_idx = ALL_M.index(default_mes_general) if default_mes_general in ALL_M else 1
 
@@ -1433,7 +1442,8 @@ with tab0:
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 1
 # ══════════════════════════════════════════════════════════════════════════════
-with tab1:
+if current_page == "Ensayos":
+    render_page_heading("Ensayos", "Seguimiento general de ensayos por proyecto, etapa y mes")
     c1, c2, c3 = st.columns(3)
     sel_proy  = c1.selectbox("Proyecto", ALL_P,  key="t1p")
     sel_etapa = c2.selectbox("Etapa",    ALL_E,  key="t1e")
@@ -1703,7 +1713,8 @@ with tab1:
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 3
 # ══════════════════════════════════════════════════════════════════════════════
-with tab3:
+if current_page == "Línea de Tiempo y Alertas":
+    render_page_heading("Línea de Tiempo y Alertas", "Alertas y evolución acumulada por proyecto")
     f3a, f3b = st.columns([2, 1])
     sel3_proy = f3a.selectbox("Proyecto",      ALL_P,  key="t3p")
     sel3_mes  = f3b.selectbox("Mes con datos", ["Todos"] + [MESES[m] for m in meses_con_datos], key="t3m")
@@ -1792,9 +1803,8 @@ with tab3:
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 4
 # ══════════════════════════════════════════════════════════════════════════════
-with tab4:
-    st.markdown("### 🔍 Consulta de Ensayos")
-    st.markdown("Filtra y encuentra exactamente qué ensayos aplican según proyecto, mes y material.")
+if current_page == "Consulta de Ensayos":
+    render_page_heading("Consulta de Ensayos", "Filtra y encuentra exactamente qué ensayos aplican según proyecto, mes y material")
     st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
     q1, q2, q3 = st.columns(3)
@@ -1863,9 +1873,8 @@ with tab4:
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 5
 # ══════════════════════════════════════════════════════════════════════════════
-with tab5:
-    st.markdown("### 🛠️ Controles")
-    st.markdown("Consulta el avance mensual de controles por ciudad, proyecto y tipo de control.")
+if current_page == "Controles":
+    render_page_heading("Controles", "Consulta el avance mensual de controles por ciudad, proyecto y tipo de control")
     st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
     c5a, c5b, c5c = st.columns(3)
