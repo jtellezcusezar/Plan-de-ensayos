@@ -263,6 +263,18 @@ def normalize_project_key(value):
         return None
     return text.casefold()
 
+
+def normalize_month_header(value):
+    if value is None or pd.isna(value):
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+
+    month_lookup = {nombre.casefold(): month for month, nombre in MESES.items()}
+    month_lookup.update({nombre[:3].casefold(): month for month, nombre in MESES.items()})
+    return month_lookup.get(text.casefold())
+
 @st.cache_data
 def load_data(excel_signature):
     df_ensayos = read_excel_table(EXCEL_PATH, "Ensayos")
@@ -292,11 +304,18 @@ def load_data(excel_signature):
         df_ensayos["Cantidad"].replace({"0,5": "0.5", "*": None}),
         errors="coerce"
     )
-    return df_ensayos, df_controles
+
+    try:
+        df_2025 = read_excel_table(EXCEL_PATH, "Datos_2025")
+        df_2025 = normalize_text_columns(df_2025)
+    except ValueError:
+        df_2025 = pd.DataFrame()
+
+    return df_ensayos, df_controles, df_2025
 
 
 EXCEL_SIGNATURE = get_excel_signature(EXCEL_PATH)
-df_full, df_controles = load_data(EXCEL_SIGNATURE)
+df_full, df_controles, df_2025 = load_data(EXCEL_SIGNATURE)
 meses_con_datos = sorted(df_full[df_full["EsEjecutado"]]["Mes"].unique().tolist())
 mes_label = " – ".join([MESES[meses_con_datos[0]], MESES[meses_con_datos[-1]]]) if len(meses_con_datos) > 1 else MESES[meses_con_datos[0]]
 MES_ACTUAL = datetime.now(ZoneInfo("America/Bogota")).month
@@ -695,7 +714,7 @@ def build_project_city_map_from_dfs(df_ensayos, df_ctrl):
     return city_map
 
 
-def build_city_combo_chart_config_from_series(city_month_series, cusezar_month_series):
+def build_city_combo_chart_config_from_series(city_month_series, cusezar_2026_month_series, cusezar_2025_month_series):
     month_labels_chart = [MESES[m] for m in range(1, 13)]
     city_names = [
         ciudad for ciudad in sorted(city_month_series.keys())
@@ -706,7 +725,11 @@ def build_city_combo_chart_config_from_series(city_month_series, cusezar_month_s
         "#65789B", "#F6BD16", "#7262FD", "#78D3F8", "#9661BC", "#F6903D",
     ]
 
-    has_combo_data = bool(city_names) or any(value is not None and not pd.isna(value) for value in cusezar_month_series)
+    has_combo_data = (
+        bool(city_names) or
+        any(value is not None and not pd.isna(value) for value in cusezar_2026_month_series) or
+        any(value is not None and not pd.isna(value) for value in cusezar_2025_month_series)
+    )
     if not has_combo_data:
         return None
 
@@ -719,7 +742,7 @@ def build_city_combo_chart_config_from_series(city_month_series, cusezar_month_s
             "type": "scroll",
             "bottom": 2,
             "left": "center",
-            "data": city_names + ["Cusezar"],
+            "data": city_names + ["Cusezar 2026", "Cusezar 2025"],
             "textStyle": {"fontFamily": "Inter, sans-serif", "fontSize": 12, "color": "#6B7280"},
         },
         "grid": {"left": 45, "right": 20, "top": 20, "bottom": 72, "containLabel": True},
@@ -745,17 +768,51 @@ def build_city_combo_chart_config_from_series(city_month_series, cusezar_month_s
             }
             for ciudad in city_names
         ] + [{
-            "name": "Cusezar",
+            "name": "Cusezar 2026",
             "type": "line",
             "smooth": True,
             "connectNulls": False,
             "symbolSize": 8,
             "lineStyle": {"width": 3, "color": "#B5545C"},
             "itemStyle": {"color": "#B5545C"},
-            "data": sanitize_echarts_series(cusezar_month_series),
+            "data": sanitize_echarts_series(cusezar_2026_month_series),
+        }, {
+            "name": "Cusezar 2025",
+            "type": "line",
+            "smooth": True,
+            "connectNulls": False,
+            "symbolSize": 7,
+            "lineStyle": {"width": 2.5, "type": "dashed", "color": "#5E8C61"},
+            "itemStyle": {"color": "#5E8C61"},
+            "data": sanitize_echarts_series(cusezar_2025_month_series),
         }],
     }
     return combo_option, 390
+
+
+def build_cusezar_2025_series(df_2025):
+    if df_2025 is None or df_2025.empty:
+        return [None] * 12
+
+    company_col = next(
+        (col for col in df_2025.columns if str(col).strip().casefold() in {"empresa", "compania", "compañia", "proyecto", "nombre"}),
+        df_2025.columns[0] if len(df_2025.columns) else None
+    )
+    if company_col is None:
+        return [None] * 12
+
+    cusezar_row = df_2025[df_2025[company_col].astype(str).str.strip().str.casefold() == "cusezar"]
+    if cusezar_row.empty:
+        return [None] * 12
+
+    row = cusezar_row.iloc[0]
+    series = [None] * 12
+    for col in df_2025.columns:
+        month = normalize_month_header(col)
+        if month is None:
+            continue
+        series[month - 1] = parse_text_value(row[col])
+    return series
 
 
 def build_project_accumulated_maps_from_precomputed(material_month_maps, control_month_maps, include_design):
@@ -839,7 +896,7 @@ def build_city_month_chart_data_from_precomputed(material_month_maps, control_mo
 
 @st.cache_data
 def build_tab0_precomputed_data(excel_signature):
-    df_ensayos, df_ctrl = load_data(excel_signature)
+    df_ensayos, df_ctrl, df_2025 = load_data(excel_signature)
     areas = ["Torre", "Producto terminado", "Zonas comunes", "Diseño", "Curado"]
 
     material_month_maps = {
@@ -868,12 +925,13 @@ def build_tab0_precomputed_data(excel_signature):
         control_month_maps,
         include_design,
     )
-    city_month_series, cusezar_month_series = build_city_month_chart_data_from_precomputed(
+    city_month_series, cusezar_2026_month_series = build_city_month_chart_data_from_precomputed(
         material_month_maps,
         control_month_maps,
         include_design,
         project_city_map,
     )
+    cusezar_2025_month_series = build_cusezar_2025_series(df_2025)
 
     return {
         "material_month_maps": material_month_maps,
@@ -881,13 +939,17 @@ def build_tab0_precomputed_data(excel_signature):
         "project_city_map": project_city_map,
         "include_design": include_design,
         "accumulated_maps": accumulated_maps,
-        "city_chart_config": build_city_combo_chart_config_from_series(city_month_series, cusezar_month_series),
+        "city_chart_config": build_city_combo_chart_config_from_series(
+            city_month_series,
+            cusezar_2026_month_series,
+            cusezar_2025_month_series,
+        ),
     }
 
 
 @st.cache_data
 def build_tab2_precomputed_data(excel_signature):
-    df_ensayos, _ = load_data(excel_signature)
+    df_ensayos, _, _ = load_data(excel_signature)
     summary = df_ensayos.copy()
     summary["comp"] = (summary["Cantidad_num"] == 1).astype(int)
     summary["inc"] = (summary["Cantidad_num"] == 0.5).astype(int)
@@ -985,7 +1047,7 @@ def build_tab2_tasa_df_from_summary(summary_df):
 
 @st.cache_data
 def get_tab5_view_data(excel_signature, ciudad, proyecto, area, pending_month_key):
-    df_ensayos, df_ctrl = load_data(excel_signature)
+    df_ensayos, df_ctrl, _ = load_data(excel_signature)
 
     if ciudad != "Todas":
         if "Ciudad" in df_ctrl.columns:
