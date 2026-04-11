@@ -783,6 +783,72 @@ def sanitize_echarts_series(values):
     return ["-" if value is None or pd.isna(value) else round(float(value), 1) for value in values]
 
 
+@st.cache_data
+def get_city_combo_chart_config(file_mtime):
+    project_city_map = get_project_city_map()
+    city_month_series, cusezar_month_series = get_city_month_chart_data(df_controles, df_full, project_city_map)
+    month_labels_chart = [MESES[m] for m in range(1, 13)]
+    city_names = [
+        ciudad for ciudad in sorted(city_month_series.keys())
+        if any(value is not None and not pd.isna(value) for value in city_month_series[ciudad])
+    ]
+    city_palette = [
+        "#7BA7D4", "#6BBF9E", "#E8C17A", "#D98B8B", "#5B8FF9", "#61DDAA",
+        "#65789B", "#F6BD16", "#7262FD", "#78D3F8", "#9661BC", "#F6903D",
+    ]
+
+    has_combo_data = bool(city_names) or any(value is not None and not pd.isna(value) for value in cusezar_month_series)
+    if not has_combo_data:
+        return None
+
+    combo_option = {
+        "textStyle": {"fontFamily": "Inter, sans-serif"},
+        "color": city_palette + ["#B5545C"],
+        "animation": False,
+        "tooltip": {"trigger": "axis", "axisPointer": {"type": "cross"}},
+        "legend": {
+            "type": "scroll",
+            "bottom": 2,
+            "left": "center",
+            "data": city_names + ["Cusezar"],
+            "textStyle": {"fontFamily": "Inter, sans-serif", "fontSize": 12, "color": "#6B7280"},
+        },
+        "grid": {"left": 45, "right": 20, "top": 20, "bottom": 72, "containLabel": True},
+        "xAxis": {
+            "type": "category",
+            "data": month_labels_chart,
+            "axisLabel": {"color": "#6B7280", "fontFamily": "Inter, sans-serif", "fontSize": 11},
+            "axisLine": {"lineStyle": {"color": "#D1D5DB"}},
+        },
+        "yAxis": {
+            "type": "value",
+            "min": 0,
+            "max": 100,
+            "axisLabel": {"formatter": "{value}%", "color": "#6B7280", "fontFamily": "Inter, sans-serif"},
+            "splitLine": {"lineStyle": {"color": "#F3F4F6"}},
+        },
+        "series": [
+            {
+                "name": ciudad,
+                "type": "bar",
+                "barMaxWidth": 18,
+                "data": sanitize_echarts_series(city_month_series[ciudad]),
+            }
+            for ciudad in city_names
+        ] + [{
+            "name": "Cusezar",
+            "type": "line",
+            "smooth": True,
+            "connectNulls": False,
+            "symbolSize": 8,
+            "lineStyle": {"width": 3, "color": "#B5545C"},
+            "itemStyle": {"color": "#B5545C"},
+            "data": sanitize_echarts_series(cusezar_month_series),
+        }],
+    }
+    return combo_option, 390
+
+
 def get_project_city_map():
     frames = []
     for df in (df_full, df_controles):
@@ -1087,65 +1153,10 @@ with tab0:
     st.markdown(section_header("Evolución mensual por ciudad", "Barras por ciudad y línea de Cusezar con el promedio mensual de todas las ciudades con dato"), unsafe_allow_html=True)
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
 
-    city_month_series, cusezar_month_series = get_city_month_chart_data(df_controles, df_full, project_city_map)
-    month_labels_chart = [MESES[m] for m in range(1, 13)]
-    city_names = [
-        ciudad for ciudad in sorted(city_month_series.keys())
-        if any(value is not None and not pd.isna(value) for value in city_month_series[ciudad])
-    ]
-    city_palette = [
-        "#7BA7D4", "#6BBF9E", "#E8C17A", "#D98B8B", "#5B8FF9", "#61DDAA",
-        "#65789B", "#F6BD16", "#7262FD", "#78D3F8", "#9661BC", "#F6903D",
-    ]
-
-    has_combo_data = bool(city_names) or any(value is not None and not pd.isna(value) for value in cusezar_month_series)
-    if has_combo_data:
-        combo_option = {
-            "textStyle": {"fontFamily": "Inter, sans-serif"},
-            "color": city_palette + ["#B5545C"],
-            "animation": False,
-            "tooltip": {"trigger": "axis", "axisPointer": {"type": "cross"}},
-            "legend": {
-                "type": "scroll",
-                "bottom": 2,
-                "left": "center",
-                "data": city_names + ["Cusezar"],
-                "textStyle": {"fontFamily": "Inter, sans-serif", "fontSize": 12, "color": "#6B7280"},
-            },
-            "grid": {"left": 45, "right": 20, "top": 20, "bottom": 72, "containLabel": True},
-            "xAxis": {
-                "type": "category",
-                "data": month_labels_chart,
-                "axisLabel": {"color": "#6B7280", "fontFamily": "Inter, sans-serif", "fontSize": 11},
-                "axisLine": {"lineStyle": {"color": "#D1D5DB"}},
-            },
-            "yAxis": {
-                "type": "value",
-                "min": 0,
-                "max": 100,
-                "axisLabel": {"formatter": "{value}%", "color": "#6B7280", "fontFamily": "Inter, sans-serif"},
-                "splitLine": {"lineStyle": {"color": "#F3F4F6"}},
-            },
-            "series": [
-                {
-                    "name": ciudad,
-                    "type": "bar",
-                    "barMaxWidth": 18,
-                    "data": sanitize_echarts_series(city_month_series[ciudad]),
-                }
-                for ciudad in city_names
-            ] + [{
-                "name": "Cusezar",
-                "type": "line",
-                "smooth": True,
-                "connectNulls": False,
-                "symbolSize": 8,
-                "lineStyle": {"width": 3, "color": "#B5545C"},
-                "itemStyle": {"color": "#B5545C"},
-                "data": sanitize_echarts_series(cusezar_month_series),
-            }],
-        }
-        render_echarts(combo_option, height=390)
+    chart_config = get_city_combo_chart_config(EXCEL_PATH.stat().st_mtime)
+    if chart_config:
+        combo_option, combo_height = chart_config
+        render_echarts(combo_option, height=combo_height)
     else:
         st.info("ℹ️ No hay datos suficientes para construir el gráfico mensual por ciudad.")
     st.markdown('</div>', unsafe_allow_html=True)
