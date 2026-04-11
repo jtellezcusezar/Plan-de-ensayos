@@ -172,8 +172,12 @@ div[data-testid="stTextInput"]>div>input:focus{border-color:#7BA7D4!important;bo
 .ig-table th{background:#B5545C;padding:8px 8px;text-align:center;font-size:10px;font-weight:700;color:#FFF7F7;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #9F434B;white-space:normal;line-height:1.2;word-break:break-word;}
 .ig-table td{padding:7px 8px;border-bottom:1px solid #F1D9DB;color:#6B7280;text-align:center;line-height:1.15;word-break:break-word;}
 .ig-table td:first-child{background:#F8E8E8;color:#8F3942;font-weight:700;text-align:center;}
-.ig-table tr.ig-city-row td{background:#FCF1F2;border-top:1px solid #DCA9AE;border-bottom:1px solid #DCA9AE;font-weight:700;}
-.ig-table tr.ig-city-row td:first-child{background:#E9C9CC;color:#7D2F37;text-transform:uppercase;letter-spacing:.04em;}
+.ig-table tr.ig-summary-row td{background:#FCF1F2;border-top:1px solid #DCA9AE;border-bottom:1px solid #DCA9AE;font-weight:700;}
+.ig-table tr.ig-summary-row td:first-child{background:#E9C9CC;color:#7D2F37;text-transform:uppercase;letter-spacing:.04em;}
+.inline-filter{display:flex;align-items:center;gap:10px;margin-bottom:2px;}
+.inline-filter-label{font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;}
+.inline-filter div[data-testid="stSelectbox"]{flex:1;}
+.inline-filter div[data-testid="stSelectbox"] > label{display:none!important;}
 .ig-table tr:last-child td{border-bottom:none;}
 .hml{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
 .hml span{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;}
@@ -847,9 +851,21 @@ with tab0:
     default_mes_general = MESES[MESES_VENCIDOS[-1]] if MESES_VENCIDOS else list(MESES.values())[0]
     default_mes_general_idx = ALL_M.index(default_mes_general) if default_mes_general in ALL_M else 1
 
-    gcol, _ = st.columns([1.2, 4.8])
+    gcol, _ = st.columns([1.35, 4.65])
     with gcol:
-        sel0_mes = st.selectbox("Mes", ALL_M[1:], index=max(0, default_mes_general_idx - 1), key="t0m")
+        st.markdown('<div class="inline-filter">', unsafe_allow_html=True)
+        label_col, select_col = st.columns([0.42, 0.58])
+        with label_col:
+            st.markdown('<div class="inline-filter-label">Mes</div>', unsafe_allow_html=True)
+        with select_col:
+            sel0_mes = st.selectbox(
+                "Mes",
+                ALL_M[1:],
+                index=max(0, default_mes_general_idx - 1),
+                key="t0m",
+                label_visibility="collapsed",
+            )
+        st.markdown('</div>', unsafe_allow_html=True)
 
     mes0_num = next((k for k, v in MESES.items() if v == sel0_mes), None)
 
@@ -933,7 +949,7 @@ with tab0:
                 row[col_idx] for row in city_row_values
             ))
 
-        city_row_html = [f'<tr class="ig-city-row"><td>{ciudad}</td>']
+        city_row_html = [f'<tr class="ig-summary-row"><td>{ciudad}</td>']
         for value in city_columns_avg:
             city_row_html.append(percent_cell_html(value))
         city_row_html.append("</tr>")
