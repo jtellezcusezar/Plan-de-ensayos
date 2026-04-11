@@ -200,6 +200,11 @@ div[data-testid="stDownloadButton"] button:hover{background:#7BA7D4!important;co
 # ── DATA ───────────────────────────────────────────────────────────────────────
 EXCEL_PATH = Path("Plan_de_ensayos_2026.xlsx")
 
+
+def get_excel_signature(path):
+    stat = path.stat()
+    return stat.st_mtime_ns, stat.st_size
+
 def read_excel_table(path, table_name):
     """Lee una tabla nombrada de Excel sin depender del nombre de la hoja."""
     wb = load_workbook(path, data_only=True, read_only=False)
@@ -258,7 +263,7 @@ def normalize_project_key(value):
     return text.casefold()
 
 @st.cache_data
-def load_data(file_mtime):
+def load_data(excel_signature):
     df_ensayos = read_excel_table(EXCEL_PATH, "Ensayos")
     df_ensayos = df_ensayos.rename(columns={
         "Etapa": "ETAPA",
@@ -288,7 +293,9 @@ def load_data(file_mtime):
     )
     return df_ensayos, df_controles
 
-df_full, df_controles = load_data(EXCEL_PATH.stat().st_mtime)
+
+EXCEL_SIGNATURE = get_excel_signature(EXCEL_PATH)
+df_full, df_controles = load_data(EXCEL_SIGNATURE)
 meses_con_datos = sorted(df_full[df_full["EsEjecutado"]]["Mes"].unique().tolist())
 mes_label = " – ".join([MESES[meses_con_datos[0]], MESES[meses_con_datos[-1]]]) if len(meses_con_datos) > 1 else MESES[meses_con_datos[0]]
 MES_ACTUAL = datetime.now(ZoneInfo("America/Bogota")).month
@@ -686,15 +693,11 @@ def get_control_month_map(df_ctrl, df_ens, area, month):
         for row in rows
     }
 
-
-@st.cache_data
-def get_material_month_map_cached(file_mtime, month):
-    return get_material_month_map(df_full, month)
-
-
-@st.cache_data
-def get_control_month_map_cached(file_mtime, area, month):
-    return get_control_month_map(df_controles, df_full, area, month)
+def month_map_from_rows(rows, month):
+    return {
+        row["label"]: row["values"][month - 1] if len(row["values"]) >= month else None
+        for row in rows
+    }
 
 
 def get_project_accumulated_map(df_ctrl, df_ens, selected_month, include_design):
@@ -731,11 +734,6 @@ def get_project_accumulated_map(df_ctrl, df_ens, selected_month, include_design)
         accumulated[proyecto] = average_values(month_averages)
 
     return accumulated
-
-
-@st.cache_data
-def get_project_accumulated_map_cached(file_mtime, selected_month, include_design):
-    return get_project_accumulated_map(df_controles, df_full, selected_month, include_design)
 
 
 def get_city_month_chart_data(df_ctrl, df_ens, project_city_map):
@@ -798,10 +796,48 @@ def sanitize_echarts_series(values):
     return ["-" if value is None or pd.isna(value) else round(float(value), 1) for value in values]
 
 
-@st.cache_data
-def get_city_combo_chart_config(file_mtime):
-    project_city_map = get_project_city_map_cached(file_mtime)
-    city_month_series, cusezar_month_series = get_city_month_chart_data(df_controles, df_full, project_city_map)
+def build_project_city_map_from_dfs(df_ensayos, df_ctrl):
+    frames = []
+    for df in (df_ensayos, df_ctrl):
+        if {"Proyecto", "Ciudad"}.issubset(df.columns):
+            sub = df[["Proyecto", "Ciudad"]].copy()
+            sub = sub.dropna(subset=["Proyecto", "Ciudad"])
+            sub["Proyecto"] = sub["Proyecto"].astype(str).str.strip()
+            sub["Ciudad"] = sub["Ciudad"].astype(str).str.strip()
+            sub = sub[
+                sub["Proyecto"].ne("") &
+                sub["Ciudad"].ne("") &
+                sub["Proyecto"].str.lower().ne("nan") &
+                sub["Ciudad"].str.lower().ne("nan") &
+                sub["Proyecto"].str.lower().ne("none") &
+                sub["Ciudad"].str.lower().ne("none")
+            ]
+            sub["ProyectoKey"] = sub["Proyecto"].map(normalize_project_key)
+            sub = sub[sub["ProyectoKey"].notna()]
+            frames.append(sub)
+
+    if not frames:
+        return {}
+
+    cities_df = pd.concat(frames, ignore_index=True).drop_duplicates()
+    city_map = {}
+    for proyecto_key, group in cities_df.groupby("ProyectoKey", sort=True):
+        ciudades = (
+            group["Ciudad"]
+            .dropna()
+            .astype(str)
+            .str.strip()
+        )
+        ciudades = [
+            ciudad for ciudad in ciudades.tolist()
+            if ciudad and ciudad.lower() not in {"nan", "none"}
+        ]
+        if ciudades:
+            city_map[proyecto_key] = ciudades[0]
+    return city_map
+
+
+def build_city_combo_chart_config_from_series(city_month_series, cusezar_month_series):
     month_labels_chart = [MESES[m] for m in range(1, 13)]
     city_names = [
         ciudad for ciudad in sorted(city_month_series.keys())
@@ -864,50 +900,131 @@ def get_city_combo_chart_config(file_mtime):
     return combo_option, 390
 
 
-def get_project_city_map():
-    frames = []
-    for df in (df_full, df_controles):
-        if {"Proyecto", "Ciudad"}.issubset(df.columns):
-            sub = df[["Proyecto", "Ciudad"]].copy()
-            sub = sub.dropna(subset=["Proyecto", "Ciudad"])
-            sub["Proyecto"] = sub["Proyecto"].astype(str).str.strip()
-            sub["Ciudad"] = sub["Ciudad"].astype(str).str.strip()
-            sub = sub[
-                sub["Proyecto"].ne("") &
-                sub["Ciudad"].ne("") &
-                sub["Proyecto"].str.lower().ne("nan") &
-                sub["Ciudad"].str.lower().ne("nan") &
-                sub["Proyecto"].str.lower().ne("none") &
-                sub["Ciudad"].str.lower().ne("none")
+def build_project_accumulated_maps_from_precomputed(material_month_maps, control_month_maps, include_design):
+    all_projects = set()
+    for month_map in material_month_maps.values():
+        all_projects.update(month_map.keys())
+    for area_month_maps in control_month_maps.values():
+        for month_map in area_month_maps.values():
+            all_projects.update(month_map.keys())
+
+    accumulated_by_month = {}
+    for selected_month in range(1, 13):
+        accumulated = {}
+        for proyecto in sorted(all_projects):
+            month_averages = []
+            for month in range(1, selected_month + 1):
+                row_values = [
+                    material_month_maps[month].get(proyecto),
+                    control_month_maps["Torre"][month].get(proyecto),
+                    control_month_maps["Producto terminado"][month].get(proyecto),
+                    control_month_maps["Zonas comunes"][month].get(proyecto),
+                ]
+                if include_design:
+                    row_values.append(control_month_maps["Diseño"][month].get(proyecto))
+                row_values.append(control_month_maps["Curado"][month].get(proyecto))
+
+                monthly_average = average_values(row_values)
+                if monthly_average is not None:
+                    month_averages.append(monthly_average)
+
+            accumulated[proyecto] = average_values(month_averages)
+        accumulated_by_month[selected_month] = accumulated
+
+    return accumulated_by_month
+
+
+def build_city_month_chart_data_from_precomputed(material_month_maps, control_month_maps, include_design, project_city_map):
+    all_projects = set()
+    for month_map in material_month_maps.values():
+        all_projects.update(month_map.keys())
+    for area_month_maps in control_month_maps.values():
+        for month_map in area_month_maps.values():
+            all_projects.update(month_map.keys())
+
+    city_month_values = {}
+    cusezar_series = []
+
+    for month in range(1, 13):
+        month_city_values = {}
+        for proyecto in sorted(all_projects):
+            row_values = [
+                material_month_maps[month].get(proyecto),
+                control_month_maps["Torre"][month].get(proyecto),
+                control_month_maps["Producto terminado"][month].get(proyecto),
+                control_month_maps["Zonas comunes"][month].get(proyecto),
             ]
-            sub["ProyectoKey"] = sub["Proyecto"].map(normalize_project_key)
-            sub = sub[sub["ProyectoKey"].notna()]
-            frames.append(sub)
+            if include_design:
+                row_values.append(control_month_maps["Diseño"][month].get(proyecto))
+            row_values.append(control_month_maps["Curado"][month].get(proyecto))
 
-    if not frames:
-        return {}
+            promedio_mes = average_values(row_values)
+            if promedio_mes is None:
+                continue
 
-    cities_df = pd.concat(frames, ignore_index=True).drop_duplicates()
-    city_map = {}
-    for proyecto_key, group in cities_df.groupby("ProyectoKey", sort=True):
-        ciudades = (
-            group["Ciudad"]
-            .dropna()
-            .astype(str)
-            .str.strip()
-        )
-        ciudades = [
-            ciudad for ciudad in ciudades.tolist()
-            if ciudad and ciudad.lower() not in {"nan", "none"}
-        ]
-        if ciudades:
-            city_map[proyecto_key] = ciudades[0]
-    return city_map
+            ciudad = project_city_map.get(normalize_project_key(proyecto), "Sin ciudad")
+            month_city_values.setdefault(ciudad, []).append(promedio_mes)
+
+        month_city_avg = {
+            ciudad: average_values(values)
+            for ciudad, values in month_city_values.items()
+        }
+
+        for ciudad, value in month_city_avg.items():
+            city_month_values.setdefault(ciudad, [None] * 12)
+            city_month_values[ciudad][month - 1] = value
+
+        cusezar_series.append(average_values(month_city_avg.values()))
+
+    return city_month_values, cusezar_series
 
 
 @st.cache_data
-def get_project_city_map_cached(file_mtime):
-    return get_project_city_map()
+def build_tab0_precomputed_data(excel_signature):
+    df_ensayos, df_ctrl = load_data(excel_signature)
+    areas = ["Torre", "Producto terminado", "Zonas comunes", "Diseño", "Curado"]
+
+    material_month_maps = {
+        month: get_material_month_map(df_ensayos, month)
+        for month in range(1, 13)
+    }
+    control_rows = {
+        area: build_heatmap_rows(df_ctrl, df_ensayos, area)
+        for area in areas
+    }
+    control_month_maps = {
+        area: {
+            month: month_map_from_rows(control_rows[area], month)
+            for month in range(1, 13)
+        }
+        for area in areas
+    }
+    project_city_map = build_project_city_map_from_dfs(df_ensayos, df_ctrl)
+    include_design = any(
+        value is not None
+        for month_map in control_month_maps["Diseño"].values()
+        for value in month_map.values()
+    )
+    accumulated_maps = build_project_accumulated_maps_from_precomputed(
+        material_month_maps,
+        control_month_maps,
+        include_design,
+    )
+    city_month_series, cusezar_month_series = build_city_month_chart_data_from_precomputed(
+        material_month_maps,
+        control_month_maps,
+        include_design,
+        project_city_map,
+    )
+
+    return {
+        "material_month_maps": material_month_maps,
+        "control_month_maps": control_month_maps,
+        "project_city_map": project_city_map,
+        "include_design": include_design,
+        "accumulated_maps": accumulated_maps,
+        "city_chart_config": build_city_combo_chart_config_from_series(city_month_series, cusezar_month_series),
+    }
 
 
 def average_values(values):
@@ -1059,17 +1176,17 @@ with tab0:
     st.markdown(heatmap_legend(), unsafe_allow_html=True)
     st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
-    file_mtime = EXCEL_PATH.stat().st_mtime
-    materiales_map = get_material_month_map_cached(file_mtime, mes0_num)
-    torre_map = get_control_month_map_cached(file_mtime, "Torre", mes0_num)
-    producto_map = get_control_month_map_cached(file_mtime, "Producto terminado", mes0_num)
-    zonas_map = get_control_month_map_cached(file_mtime, "Zonas comunes", mes0_num)
-    diseno_map = get_control_month_map_cached(file_mtime, "Diseño", mes0_num)
-    curado_map = get_control_month_map_cached(file_mtime, "Curado", mes0_num)
-    project_city_map = get_project_city_map_cached(file_mtime)
+    tab0_data = build_tab0_precomputed_data(EXCEL_SIGNATURE)
+    materiales_map = tab0_data["material_month_maps"][mes0_num]
+    torre_map = tab0_data["control_month_maps"]["Torre"][mes0_num]
+    producto_map = tab0_data["control_month_maps"]["Producto terminado"][mes0_num]
+    zonas_map = tab0_data["control_month_maps"]["Zonas comunes"][mes0_num]
+    diseno_map = tab0_data["control_month_maps"]["Diseño"][mes0_num]
+    curado_map = tab0_data["control_month_maps"]["Curado"][mes0_num]
+    project_city_map = tab0_data["project_city_map"]
 
-    mostrar_diseno = any(v is not None for v in diseno_map.values())
-    acumulado_map = get_project_accumulated_map_cached(file_mtime, mes0_num, mostrar_diseno)
+    mostrar_diseno = tab0_data["include_design"]
+    acumulado_map = tab0_data["accumulated_maps"][mes0_num]
     proyectos_general = sorted(
         set(materiales_map.keys()) |
         set(torre_map.keys()) |
@@ -1174,7 +1291,7 @@ with tab0:
     st.markdown(section_header("Evolución mensual por ciudad", "Barras por ciudad y línea de Cusezar con el promedio mensual de todas las ciudades con dato"), unsafe_allow_html=True)
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
 
-    chart_config = get_city_combo_chart_config(file_mtime)
+    chart_config = tab0_data["city_chart_config"]
     if chart_config:
         combo_option, combo_height = chart_config
         render_echarts(combo_option, height=combo_height)
