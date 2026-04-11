@@ -798,6 +798,8 @@ with tab0:
 
     st.markdown(section_header("Informe General", f"Resumen consolidado por proyecto para {sel0_mes}"), unsafe_allow_html=True)
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
+    st.markdown(heatmap_legend(), unsafe_allow_html=True)
+    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
     materiales_map = get_material_month_map(df_full, mes0_num)
     torre_map = get_control_month_map(df_controles, df_full, "Torre", mes0_num)
@@ -864,8 +866,6 @@ with tab0:
         f'<tbody>{"".join(body_rows)}</tbody></table></div></div>',
         unsafe_allow_html=True
     )
-    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
-    st.markdown(heatmap_legend(), unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
