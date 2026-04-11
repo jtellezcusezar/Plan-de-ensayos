@@ -687,6 +687,16 @@ def get_control_month_map(df_ctrl, df_ens, area, month):
     }
 
 
+@st.cache_data
+def get_material_month_map_cached(file_mtime, month):
+    return get_material_month_map(df_full, month)
+
+
+@st.cache_data
+def get_control_month_map_cached(file_mtime, area, month):
+    return get_control_month_map(df_controles, df_full, area, month)
+
+
 def get_project_accumulated_map(df_ctrl, df_ens, selected_month, include_design):
     monthly_material = {m: get_material_month_map(df_ens, m) for m in range(1, selected_month + 1)}
     monthly_torre = {m: get_control_month_map(df_ctrl, df_ens, "Torre", m) for m in range(1, selected_month + 1)}
@@ -721,6 +731,11 @@ def get_project_accumulated_map(df_ctrl, df_ens, selected_month, include_design)
         accumulated[proyecto] = average_values(month_averages)
 
     return accumulated
+
+
+@st.cache_data
+def get_project_accumulated_map_cached(file_mtime, selected_month, include_design):
+    return get_project_accumulated_map(df_controles, df_full, selected_month, include_design)
 
 
 def get_city_month_chart_data(df_ctrl, df_ens, project_city_map):
@@ -785,7 +800,7 @@ def sanitize_echarts_series(values):
 
 @st.cache_data
 def get_city_combo_chart_config(file_mtime):
-    project_city_map = get_project_city_map()
+    project_city_map = get_project_city_map_cached(file_mtime)
     city_month_series, cusezar_month_series = get_city_month_chart_data(df_controles, df_full, project_city_map)
     month_labels_chart = [MESES[m] for m in range(1, 13)]
     city_names = [
@@ -888,6 +903,11 @@ def get_project_city_map():
         if ciudades:
             city_map[proyecto_key] = ciudades[0]
     return city_map
+
+
+@st.cache_data
+def get_project_city_map_cached(file_mtime):
+    return get_project_city_map()
 
 
 def average_values(values):
@@ -1039,16 +1059,17 @@ with tab0:
     st.markdown(heatmap_legend(), unsafe_allow_html=True)
     st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
-    materiales_map = get_material_month_map(df_full, mes0_num)
-    torre_map = get_control_month_map(df_controles, df_full, "Torre", mes0_num)
-    producto_map = get_control_month_map(df_controles, df_full, "Producto terminado", mes0_num)
-    zonas_map = get_control_month_map(df_controles, df_full, "Zonas comunes", mes0_num)
-    diseno_map = get_control_month_map(df_controles, df_full, "Diseño", mes0_num)
-    curado_map = get_control_month_map(df_controles, df_full, "Curado", mes0_num)
-    project_city_map = get_project_city_map()
+    file_mtime = EXCEL_PATH.stat().st_mtime
+    materiales_map = get_material_month_map_cached(file_mtime, mes0_num)
+    torre_map = get_control_month_map_cached(file_mtime, "Torre", mes0_num)
+    producto_map = get_control_month_map_cached(file_mtime, "Producto terminado", mes0_num)
+    zonas_map = get_control_month_map_cached(file_mtime, "Zonas comunes", mes0_num)
+    diseno_map = get_control_month_map_cached(file_mtime, "Diseño", mes0_num)
+    curado_map = get_control_month_map_cached(file_mtime, "Curado", mes0_num)
+    project_city_map = get_project_city_map_cached(file_mtime)
 
     mostrar_diseno = any(v is not None for v in diseno_map.values())
-    acumulado_map = get_project_accumulated_map(df_controles, df_full, mes0_num, mostrar_diseno)
+    acumulado_map = get_project_accumulated_map_cached(file_mtime, mes0_num, mostrar_diseno)
     proyectos_general = sorted(
         set(materiales_map.keys()) |
         set(torre_map.keys()) |
@@ -1153,7 +1174,7 @@ with tab0:
     st.markdown(section_header("Evolución mensual por ciudad", "Barras por ciudad y línea de Cusezar con el promedio mensual de todas las ciudades con dato"), unsafe_allow_html=True)
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
 
-    chart_config = get_city_combo_chart_config(EXCEL_PATH.stat().st_mtime)
+    chart_config = get_city_combo_chart_config(file_mtime)
     if chart_config:
         combo_option, combo_height = chart_config
         render_echarts(combo_option, height=combo_height)
