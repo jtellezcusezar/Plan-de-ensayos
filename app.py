@@ -1012,6 +1012,15 @@ def filter_tab2_summary(summary_df, proyecto, etapa, material):
     return filtered
 
 
+def filter_summary_by_month(summary_df, mes):
+    if mes == "Todos":
+        return summary_df
+    month_num = next((k for k, v in MESES.items() if v == mes), None)
+    if month_num is None:
+        return summary_df.iloc[0:0].copy()
+    return summary_df[summary_df["Mes"] == month_num]
+
+
 def build_tab2_heatmap_rows_from_summary(summary_df):
     rows_hm = []
     if summary_df.empty:
@@ -1058,6 +1067,33 @@ def build_tab2_tasa_df_from_summary(summary_df):
 
     rows = []
     for proyecto, group in vencidos.groupby("Proyecto", sort=True):
+        comp = int(group["comp"].sum())
+        inc = int(group["inc"].sum())
+        no_r = int(group["no_r"].sum())
+        tot = int((group["executed"] + group["planned"]).sum())
+        tasa = round(((comp + inc * 0.5) / tot) * 100, 1) if tot > 0 else 0.0
+        rows.append({
+            "Proyecto": proyecto,
+            "tasa": tasa,
+            "comp": comp,
+            "inc": inc,
+            "no_r": no_r,
+            "tot": tot,
+        })
+
+    return pd.DataFrame(rows).sort_values("tasa", ascending=False)
+
+
+def build_tasa_df_for_selected_period(summary_df, mes):
+    if mes == "Todos":
+        return build_tab2_tasa_df_from_summary(summary_df)
+
+    period_df = filter_summary_by_month(summary_df, mes)
+    if period_df.empty:
+        return pd.DataFrame(columns=["Proyecto", "tasa", "comp", "inc", "no_r", "tot"])
+
+    rows = []
+    for proyecto, group in period_df.groupby("Proyecto", sort=True):
         comp = int(group["comp"].sum())
         inc = int(group["inc"].sum())
         no_r = int(group["no_r"].sum())
@@ -1240,10 +1276,9 @@ st.markdown(f"""
 </div><div style="height:8px"></div>
 """, unsafe_allow_html=True)
 
-tab0, tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab0, tab1, tab3, tab4, tab5 = st.tabs([
     "📌  Informe General",
-    "📊  Resumen General",
-    "🏗️  Por Proyecto y Material",
+    "📊  Ensayos",
     "📅  Línea de Tiempo y Alertas",
     "🔍  Consulta de Ensayos",
     "🛠️  Controles",
@@ -1405,11 +1440,13 @@ with tab1:
     sel_mes   = c3.selectbox("Mes",      ALL_M,  key="t1m")
 
     df1 = filt(filt(filt_mes(df_full, sel_mes), "ETAPA", sel_etapa, "Todas"), "Proyecto", sel_proy, "Todos")
-
-    st.markdown(
-        f'<div class="info-note">ℹ️ Cumplimiento calculado sobre datos ejecutados '
-        f'(<strong>{mes_label} 2026</strong>). Planeados (*) excluidos. Meta: <strong>{META}%</strong></div>',
-        unsafe_allow_html=True)
+    tab1_summary = filter_tab2_summary(
+        build_tab2_precomputed_data(EXCEL_SIGNATURE),
+        sel_proy,
+        sel_etapa,
+        "Todos",
+    )
+    tab1_summary = filter_summary_by_month(tab1_summary, sel_mes)
 
     comp, inc, no_r, plan, pend, tot, tasa = get_kpis(df1)
     k1, k2, k3, k4, k5 = st.columns(5)
@@ -1443,11 +1480,11 @@ with tab1:
             },
             "series": [{
                 "type": "pie",
-                "radius": ["48%", "72%"],
-                "center": ["50%", "40%"],
+                "radius": ["40%", "62%"],
+                "center": ["50%", "36%"],
                 "avoidLabelOverlap": True,
-                "label": {"show": True, "formatter": "{d}%", "fontFamily": "Inter, sans-serif", "fontSize": 11, "color": "#6B7280"},
-                "labelLine": {"show": True, "length": 10, "length2": 8},
+                "label": {"show": True, "formatter": "{d}%", "fontFamily": "Inter, sans-serif", "fontSize": 10, "color": "#6B7280"},
+                "labelLine": {"show": True, "length": 8, "length2": 6},
                 "itemStyle": {"borderColor": "#FFFFFF", "borderWidth": 2},
                 "data": [
                     {"name": row["Estado"], "value": int(row["n"]), "itemStyle": {"color": COLORS[row["Estado"]]}}
@@ -1460,7 +1497,7 @@ with tab1:
                 "top": "40%",
                 "style": {
                     "text": f"{len(df1):,}",
-                    "fontSize": 18,
+                    "fontSize": 16,
                     "fontWeight": 700,
                     "fontFamily": "Inter, sans-serif",
                     "fill": "#111827",
@@ -1469,53 +1506,98 @@ with tab1:
                 },
             }],
         }
-        render_echarts(donut_option, height=340)
+        render_echarts(donut_option, height=240)
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # ── Barras por proyecto ──
+    # ── Tasa por proyecto ──
     with d2:
-        st.markdown(section_header("Avance por Proyecto", "Proyectos con ensayos ejecutados · ordenado por tasa de cumplimiento"), unsafe_allow_html=True)
+        tasa_subtitle = (
+            f"% de completos sobre el total planeado en meses vencidos ({meses_vencidos_label}) · Meta: {META}%"
+            if sel_mes == "Todos"
+            else f"% de completos sobre el total planeado en {sel_mes} · Meta: {META}%"
+        )
+        st.markdown(section_header("Tasa de Cumplimiento por Proyecto", tasa_subtitle), unsafe_allow_html=True)
         st.markdown('<div class="dash-card">', unsafe_allow_html=True)
-        ex1 = df1[df1["EsEjecutado"] & (df1["Estado"] != "Planeado")]
-        if not ex1.empty:
-            orden = (ex1.groupby("Proyecto")
-                       .apply(lambda g: (((g["Cantidad_num"] == 1).sum()) + ((g["Cantidad_num"] == 0.5).sum() * 0.5)) / len(g) * 100)
-                       .sort_values().index.tolist())
-            pg = ex1.groupby(["Proyecto","Estado"])["Cantidad_num"].count().reset_index()
-            pg.columns = ["Proyecto","Estado","n"]
-            pg_pivot = (pg.pivot(index="Proyecto", columns="Estado", values="n")
-                          .reindex(index=orden, columns=["No Realizado", "Incompleto", "Completo"], fill_value=0)
-                          .fillna(0))
-            proy_option = {
+        if not tab1_summary.empty:
+            t_df = build_tasa_df_for_selected_period(tab1_summary, sel_mes)
+            tasa_option = {
                 "textStyle": {"fontFamily": "Inter, sans-serif"},
-                "color": [COLORS["No Realizado"], COLORS["Incompleto"], COLORS["Completo"]],
-                "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
-                "legend": {
-                    "type": "scroll",
-                    "bottom": 2,
-                    "left": "center",
-                    "textStyle": {"fontFamily": "Inter, sans-serif", "fontSize": 12, "color": "#6B7280"},
+                "tooltip": {
+                    "trigger": "item",
+                    "formatter": """__JS__function (params) {
+                        const d = params.data;
+                        return '<b>' + d.proyecto + '</b><br/>Cumplimiento: ' + d.value.toFixed(1) + '%' +
+                               '<br/>Completos: ' + d.comp +
+                               '<br/>Incompletos: ' + d.inc +
+                               '<br/>No realizados: ' + d.no_r +
+                               '<br/>Total plan: ' + d.tot;
+                    }__JS__""",
                 },
-                "grid": {"left": 110, "right": 10, "top": 10, "bottom": 65, "containLabel": True},
+                "grid": {"left": 120, "right": 35, "top": 24, "bottom": 20, "containLabel": True},
                 "xAxis": {
                     "type": "value",
+                    "min": 0,
+                    "max": 115,
+                    "axisLabel": {"formatter": "{value}%", "color": "#6B7280", "fontFamily": "Inter, sans-serif"},
                     "splitLine": {"show": True, "lineStyle": {"color": "#F3F4F6"}},
-                    "axisLabel": {"color": "#6B7280", "fontFamily": "Inter, sans-serif"},
                 },
                 "yAxis": {
                     "type": "category",
-                    "data": orden,
+                    "data": t_df["Proyecto"].tolist(),
                     "axisLabel": {"color": "#374151", "fontFamily": "Inter, sans-serif"},
                     "axisTick": {"show": False},
                 },
-                "series": [
-                    {"name": "No Realizado", "type": "bar", "stack": "total", "data": pg_pivot["No Realizado"].astype(int).tolist()},
-                    {"name": "Incompleto", "type": "bar", "stack": "total", "data": pg_pivot["Incompleto"].astype(int).tolist()},
-                    {"name": "Completo", "type": "bar", "stack": "total", "data": pg_pivot["Completo"].astype(int).tolist()},
-                ],
+                "series": [{
+                    "type": "bar",
+                    "data": [
+                        {
+                            "value": float(row.tasa),
+                            "proyecto": row.Proyecto,
+                            "comp": int(row.comp),
+                            "inc": int(row.inc),
+                            "no_r": int(row.no_r),
+                            "tot": int(row.tot),
+                            "itemStyle": {"color": bar_col(row.tasa)},
+                        }
+                        for _, row in t_df.iterrows()
+                    ],
+                    "barWidth": 18,
+                    "label": {
+                        "show": True,
+                        "position": "right",
+                        "formatter": "{c}%",
+                        "fontFamily": "Inter, sans-serif",
+                        "fontSize": 11,
+                        "color": "#6B7280",
+                    },
+                    "markLine": {
+                        "silent": True,
+                        "symbol": "none",
+                        "lineStyle": {"type": "dashed", "color": COLORS["Planeado"], "width": 1.5},
+                        "label": {
+                            "show": True,
+                            "formatter": f"Meta {META}%",
+                            "color": COLORS["Planeado"],
+                            "fontFamily": "Inter, sans-serif",
+                            "fontSize": 10,
+                        },
+                        "data": [{"xAxis": META}],
+                    },
+                }],
             }
-            render_echarts(proy_option, height=330)
+            render_echarts(tasa_option, height=max(240, 55 + len(t_df) * 22))
+        else:
+            st.info("ℹ️ No hay datos suficientes para calcular la tasa de cumplimiento con los filtros aplicados.")
         st.markdown('</div>', unsafe_allow_html=True)
+
+    # ── Heatmap ──
+    st.markdown(section_header('Heatmap de Cumplimiento — Proyecto × Mes', 'Tasa = promedio de valores ejecutados (0, 0.5, 1). "Plan." = sin datos ejecutados ese mes.'), unsafe_allow_html=True)
+    st.markdown('<div class="dash-card">', unsafe_allow_html=True)
+    st.markdown(heatmap_legend(), unsafe_allow_html=True)
+    rows_hm = build_tab2_heatmap_rows_from_summary(tab1_summary)
+    heatmap_option, heatmap_height = build_echarts_heatmap_config(rows_hm)
+    render_echarts(heatmap_option, height=heatmap_height)
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Línea temporal ──
     st.markdown(section_header("Ensayos por Mes — 2026", "Líneas sólidas = ejecutados por estado · Punteada = total planeado del mes · Curva suavizada"), unsafe_allow_html=True)
@@ -1588,102 +1670,6 @@ with tab1:
         ],
     }
     render_echarts(line_option, height=340)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 2
-# ══════════════════════════════════════════════════════════════════════════════
-with tab2:
-    f2a, f2b, f2c = st.columns(3)
-    sel2_proy  = f2a.selectbox("Proyecto", ALL_P,   key="t2p")
-    sel2_etapa = f2b.selectbox("Etapa",    ALL_E,   key="t2e")
-    sel2_mat   = f2c.selectbox("Material", ALL_MAT, key="t2m")
-
-    df2 = filt(filt(filt(df_full, "Proyecto", sel2_proy, "Todos"), "ETAPA", sel2_etapa, "Todas"), "MATERIAL", sel2_mat, "Todos")
-    tab2_summary = filter_tab2_summary(build_tab2_precomputed_data(EXCEL_SIGNATURE), sel2_proy, sel2_etapa, sel2_mat)
-
-    # ── Heatmap ──
-    st.markdown(section_header('Heatmap de Cumplimiento — Proyecto × Mes', 'Tasa = promedio de valores ejecutados (0, 0.5, 1). "Plan." = sin datos ejecutados ese mes.'), unsafe_allow_html=True)
-    st.markdown('<div class="dash-card">', unsafe_allow_html=True)
-    st.markdown(heatmap_legend(), unsafe_allow_html=True)
-
-    rows_hm = build_tab2_heatmap_rows_from_summary(tab2_summary)
-
-    heatmap_option, heatmap_height = build_echarts_heatmap_config(rows_hm)
-    render_echarts(heatmap_option, height=heatmap_height)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # ── Tasa por proyecto ──
-    st.markdown(section_header("Tasa de Cumplimiento por Proyecto", f"% de completos sobre el total planeado en meses vencidos ({meses_vencidos_label}) · Meta: {META}%"), unsafe_allow_html=True)
-    st.markdown('<div class="dash-card">', unsafe_allow_html=True)
-    if not df2.empty:
-        t_df = build_tab2_tasa_df_from_summary(tab2_summary)
-        tasa_option = {
-            "textStyle": {"fontFamily": "Inter, sans-serif"},
-            "tooltip": {
-                "trigger": "item",
-                "formatter": """__JS__function (params) {
-                    const d = params.data;
-                    return '<b>' + d.proyecto + '</b><br/>Cumplimiento: ' + d.value.toFixed(1) + '%' +
-                           '<br/>Completos: ' + d.comp +
-                           '<br/>Incompletos: ' + d.inc +
-                           '<br/>No realizados: ' + d.no_r +
-                           '<br/>Total plan meses vencidos: ' + d.tot;
-                }__JS__""",
-            },
-            "grid": {"left": 120, "right": 35, "top": 24, "bottom": 20, "containLabel": True},
-            "xAxis": {
-                "type": "value",
-                "min": 0,
-                "max": 115,
-                "axisLabel": {"formatter": "{value}%", "color": "#6B7280", "fontFamily": "Inter, sans-serif"},
-                "splitLine": {"lineStyle": {"color": "#F3F4F6"}},
-            },
-            "yAxis": {
-                "type": "category",
-                "data": t_df["Proyecto"].tolist(),
-                "axisLabel": {"color": "#374151", "fontFamily": "Inter, sans-serif"},
-                "axisTick": {"show": False},
-            },
-            "series": [{
-                "type": "bar",
-                "data": [
-                    {
-                        "value": float(row.tasa),
-                        "proyecto": row.Proyecto,
-                        "comp": int(row.comp),
-                        "inc": int(row.inc),
-                        "no_r": int(row.no_r),
-                        "tot": int(row.tot),
-                        "itemStyle": {"color": bar_col(row.tasa)},
-                    }
-                    for _, row in t_df.iterrows()
-                ],
-                "barWidth": 18,
-                "label": {
-                    "show": True,
-                    "position": "right",
-                    "formatter": "{c}%",
-                    "fontFamily": "Inter, sans-serif",
-                    "fontSize": 11,
-                    "color": "#6B7280",
-                },
-                "markLine": {
-                    "silent": True,
-                    "symbol": "none",
-                    "lineStyle": {"type": "dashed", "color": COLORS["Planeado"], "width": 1.5},
-                    "label": {
-                        "show": True,
-                        "formatter": f"Meta {META}%",
-                        "color": COLORS["Planeado"],
-                        "fontFamily": "Inter, sans-serif",
-                        "fontSize": 10,
-                    },
-                    "data": [{"xAxis": META}],
-                },
-            }],
-        }
-        render_echarts(tasa_option, height=max(320, 70 + len(t_df) * 28))
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
