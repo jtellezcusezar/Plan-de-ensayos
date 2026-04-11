@@ -669,12 +669,16 @@ def get_project_city_map():
     for df in (df_full, df_controles):
         if {"Proyecto", "Ciudad"}.issubset(df.columns):
             sub = df[["Proyecto", "Ciudad"]].copy()
+            sub = sub.dropna(subset=["Proyecto", "Ciudad"])
             sub["Proyecto"] = sub["Proyecto"].astype(str).str.strip()
             sub["Ciudad"] = sub["Ciudad"].astype(str).str.strip()
             sub = sub[
-                sub["Proyecto"].notna() & sub["Ciudad"].notna() &
-                (sub["Proyecto"] != "") & (sub["Ciudad"] != "") &
-                (sub["Proyecto"] != "nan") & (sub["Ciudad"] != "nan")
+                sub["Proyecto"].ne("") &
+                sub["Ciudad"].ne("") &
+                sub["Proyecto"].str.lower().ne("nan") &
+                sub["Ciudad"].str.lower().ne("nan") &
+                sub["Proyecto"].str.lower().ne("none") &
+                sub["Ciudad"].str.lower().ne("none")
             ]
             frames.append(sub)
 
@@ -683,8 +687,19 @@ def get_project_city_map():
 
     cities_df = pd.concat(frames, ignore_index=True).drop_duplicates()
     city_map = {}
-    for proyecto, group in cities_df.groupby("Proyecto"):
-        city_map[proyecto] = sorted(group["Ciudad"].tolist())[0]
+    for proyecto, group in cities_df.groupby("Proyecto", sort=True):
+        ciudades = (
+            group["Ciudad"]
+            .dropna()
+            .astype(str)
+            .str.strip()
+        )
+        ciudades = [
+            ciudad for ciudad in ciudades.tolist()
+            if ciudad and ciudad.lower() not in {"nan", "none"}
+        ]
+        if ciudades:
+            city_map[proyecto] = ciudades[0]
     return city_map
 
 
