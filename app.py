@@ -289,7 +289,13 @@ def load_data():
     return df_ensayos, df_controles
 
 
-df_full, df_controles = load_data()
+def get_session_data():
+    if "excel_data" not in st.session_state:
+        st.session_state["excel_data"] = load_data()
+    return st.session_state["excel_data"]
+
+
+df_full, df_controles = get_session_data()
 meses_con_datos = sorted(df_full[df_full["EsEjecutado"]]["Mes"].unique().tolist())
 mes_label = " – ".join([MESES[meses_con_datos[0]], MESES[meses_con_datos[-1]]]) if len(meses_con_datos) > 1 else MESES[meses_con_datos[0]]
 MES_ACTUAL = datetime.now(ZoneInfo("America/Bogota")).month
@@ -831,7 +837,7 @@ def build_city_month_chart_data_from_precomputed(material_month_maps, control_mo
 
 
 def build_tab0_precomputed_data():
-    df_ensayos, df_ctrl = load_data()
+    df_ensayos, df_ctrl = get_session_data()
     areas = ["Torre", "Producto terminado", "Zonas comunes", "Diseño", "Curado"]
 
     material_month_maps = {
@@ -878,7 +884,7 @@ def build_tab0_precomputed_data():
 
 
 def build_tab2_precomputed_data():
-    df_ensayos, _ = load_data()
+    df_ensayos, _ = get_session_data()
     summary = df_ensayos.copy()
     summary["comp"] = (summary["Cantidad_num"] == 1).astype(int)
     summary["inc"] = (summary["Cantidad_num"] == 0.5).astype(int)
@@ -975,7 +981,7 @@ def build_tab2_tasa_df_from_summary(summary_df):
 
 
 def get_tab5_view_data(ciudad, proyecto, area, pending_month_key):
-    df_ensayos, df_ctrl = load_data()
+    df_ensayos, df_ctrl = get_session_data()
 
     if ciudad != "Todas":
         if "Ciudad" in df_ctrl.columns:
