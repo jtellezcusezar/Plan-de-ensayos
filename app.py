@@ -1765,10 +1765,8 @@ with tab5:
     sel5_ciud = c5a.selectbox("Ciudad", ALL_CIUD, key="t5c")
     sel5_proy = c5b.selectbox("Proyecto", ALL_PC, key="t5p")
     sel5_area = c5c.selectbox("Control", CONTROL_AREA_OPTIONS, index=0, key="t5a")
-    pend_col, _ = st.columns([1.2, 4.8])
-    with pend_col:
-        sel5_pend_mes = st.selectbox("Mes", ALL_M, key="t5_pending_mes")
-    pending_month_key = "Todos" if sel5_pend_mes == "Todos" else next((k for k, v in MESES.items() if v == sel5_pend_mes), "Todos")
+    sel5_pend_mes = "Todos"
+    pending_month_key = "Todos"
 
     tab5_error = None
     rows5 = []
@@ -1800,6 +1798,23 @@ with tab5:
 
     st.markdown(section_header("Controles pendientes", "Controles con valor 0 o 0,5 agrupados por proyecto"), unsafe_allow_html=True)
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
+
+    pend_col, _ = st.columns([1.2, 4.8])
+    with pend_col:
+        sel5_pend_mes = st.selectbox("Mes", ALL_M, key="t5_pending_mes")
+    pending_month_key = "Todos" if sel5_pend_mes == "Todos" else next((k for k, v in MESES.items() if v == sel5_pend_mes), "Todos")
+    try:
+        _, pending_rows = get_tab5_view_data(
+            EXCEL_SIGNATURE,
+            sel5_ciud,
+            sel5_proy,
+            sel5_area,
+            pending_month_key,
+        )
+        tab5_error = None
+    except Exception as exc:
+        tab5_error = str(exc)
+        pending_rows = []
 
     if tab5_error:
         st.warning("No fue posible construir la tabla de pendientes de controles con la estructura actual del Excel.")
