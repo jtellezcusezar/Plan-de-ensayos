@@ -665,7 +665,16 @@ def get_control_month_map(df_ctrl, df_ens, area, month):
 def percent_cell_html(value):
     if value is None or pd.isna(value):
         return '<td class="hna"><strong>—</strong></td>'
-    return f'<td class="{hm_cls(float(value))}"><strong>{float(value):.0f}%</strong></td>'
+    cls = hm_cls(float(value))
+    text_colors = {
+        "h100": "#2D6A4F",
+        "h75": "#667A1E",
+        "h50": "#A97B12",
+        "h25": "#A45724",
+        "h0": "#8B2B2B",
+    }
+    color = text_colors.get(cls, "#374151")
+    return f'<td class="{cls}" style="color:{color};"><strong>{float(value):.0f}%</strong></td>'
 
 def build_heatmap_rows(df_ctrl, df_ens, area):
     rows = []
@@ -855,6 +864,8 @@ with tab0:
         f'<tbody>{"".join(body_rows)}</tbody></table></div></div>',
         unsafe_allow_html=True
     )
+    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+    st.markdown(heatmap_legend(), unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
