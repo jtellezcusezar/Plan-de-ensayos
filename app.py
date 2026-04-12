@@ -108,7 +108,7 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
 html,body,[class*="css"]{font-family:'Inter',sans-serif!important;}
 #MainMenu,footer{visibility:hidden;}
-.block-container{padding-top:4.25rem!important;max-width:100%!important;padding-left:2rem!important;padding-right:2rem!important;}
+.block-container{padding-top:3.25rem!important;max-width:100%!important;padding-left:2rem!important;padding-right:2rem!important;}
 section[data-testid="stSidebar"],[data-testid="stSidebar"]{background:#F8FAFC;border-right:1px solid #E5E9F0;}
 section[data-testid="stSidebar"] > div:first-child,[data-testid="stSidebar"] > div:first-child{padding-top:1.25rem;}
 section[data-testid="stSidebar"] [data-testid="stVerticalBlock"],[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{gap:.35rem;}
