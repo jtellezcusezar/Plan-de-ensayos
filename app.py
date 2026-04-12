@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 from pathlib import Path
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from io import BytesIO
 from openpyxl import load_workbook
 import json
 from uuid import uuid4
@@ -166,22 +167,24 @@ div[data-testid="stTextInput"]>div>input:focus{border-color:#7BA7D4!important;bo
 .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
 .bc{background:#E4F4EE;color:#3D8B6E;}.bi{background:#FBF3E0;color:#C49A3C;}.bn{background:#F8E8E8;color:#B05B5B;}.bp{background:#EEF3FA;color:#4A7BA8;}
 .rt{width:100%;border-collapse:collapse;font-size:13px;}
-.rt th{background:#F8F9FB;padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #E5E9F0;white-space:nowrap;}
-.rt td{padding:10px 14px;border-bottom:1px solid #F3F4F6;color:#6B7280;}
-.rt td:first-child{color:#111827;font-weight:600;}.rt tr:last-child td{border-bottom:none;}.rt tr:hover td{background:#FAFBFC;}
+.rt th{background:#B5545C;padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:#FFF7F7;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #9F434B;white-space:nowrap;}
+.rt td{padding:10px 14px;border-bottom:1px solid #F1D9DB;color:#6B7280;}
+.rt td:first-child{background:#F8E8E8;color:#8F3942;font-weight:700;}
+.rt tr:last-child td{border-bottom:none;}.rt tr:hover td{background:#FCF4F5;}
+.rt tr:hover td:first-child{background:#F8E8E8;}
 .ig-wrap{display:flex;justify-content:center;}
 .ig-table{width:100%;max-width:1180px;border-collapse:collapse;font-size:12px;table-layout:fixed;}
 .ig-table th{background:#B5545C;padding:8px 8px;text-align:center;font-size:10px;font-weight:700;color:#FFF7F7;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #9F434B;white-space:normal;line-height:1.2;word-break:break-word;}
 .ig-table td{padding:7px 8px;border-bottom:1px solid #F1D9DB;color:#6B7280;text-align:center;line-height:1.15;word-break:break-word;}
 .ig-table td:first-child{background:#F8E8E8;color:#8F3942;font-weight:700;text-align:center;}
-.ig-table tr.ig-summary-row td{background:#E9C9CC!important;border-top:1px solid #DCA9AE;border-bottom:1px solid #DCA9AE;font-weight:700;}
-.ig-table tr.ig-summary-row td:first-child{background:#E9C9CC!important;color:#7D2F37!important;text-transform:uppercase;letter-spacing:.04em;}
+.ig-table tr.ig-summary-row td{background:#F8E8E8!important;border-top:1px solid #E8CDD0;border-bottom:1px solid #E8CDD0;font-weight:700;color:#8F3942!important;}
+.ig-table tr.ig-summary-row td:first-child{background:#F8E8E8!important;color:#8F3942!important;text-transform:uppercase;letter-spacing:.04em;}
 .ig-table tr.ig-summary-row td.h100,
 .ig-table tr.ig-summary-row td.h75,
 .ig-table tr.ig-summary-row td.h50,
 .ig-table tr.ig-summary-row td.h25,
 .ig-table tr.ig-summary-row td.h0,
-.ig-table tr.ig-summary-row td.hna{background:#E9C9CC!important;}
+.ig-table tr.ig-summary-row td.hna{background:#F8E8E8!important;}
 .ig-table tr.ig-corp-row td{background:#E1B7BB!important;border-top:1px solid #C89499;border-bottom:1px solid #C89499;font-weight:800;}
 .ig-table tr.ig-corp-row td:first-child{background:#E1B7BB!important;color:#5E1F28!important;text-transform:uppercase;letter-spacing:.05em;}
 .ig-table tr.ig-corp-row td.h100,
@@ -434,6 +437,14 @@ def render_page_heading(title, subtitle=""):
         unsafe_allow_html=True
     )
 
+
+def dataframe_to_excel_bytes(df):
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Consulta")
+    output.seek(0)
+    return output.getvalue()
+
 def get_kpis(df):
     ex   = df[df["EsEjecutado"]]
     comp = int((ex["Cantidad_num"] == 1).sum())
@@ -586,6 +597,15 @@ def badge(estado):
          "No Realizado":("bn","❌"), "Planeado":("bp","🔵")}
     cls, ico = m.get(estado, ("bp","🔵"))
     return f'<span class="badge {cls}">{ico} {estado}</span>'
+
+
+def pending_text_color(estado):
+    return {
+        "No Realizado": "#8B2B2B",
+        "Incompleto": "#A97B12",
+        "Completo": "#2D6A4F",
+        "Planeado": "#4A7BA8",
+    }.get(estado, "#6B7280")
 
 def sem_card(name, tasa, ej, crit):
     cls = "sv" if tasa >= META else "sa" if tasa >= META * 0.6 else "sr"
@@ -1273,9 +1293,8 @@ def build_heatmap_rows(df_ctrl, df_ens, area):
 NAV_OPTIONS = {
     "Informe General": "⌂  Informe General",
     "Ensayos": "◫  Ensayos",
-    "Línea de Tiempo y Alertas": "◎  Línea de Tiempo y Alertas",
-    "Consulta de Ensayos": "⌕  Consulta de Ensayos",
     "Controles": "☷  Controles",
+    "Consulta de Ensayos": "⌕  Consulta de Ensayos",
 }
 
 with st.sidebar:
@@ -1688,22 +1707,22 @@ if current_page == "Ensayos":
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
     pending_ensayos_df = df1[
         df1["Cantidad_num"].isin([0, 0.5])
-    ][["Proyecto", "ETAPA", "ENSAYO", "Estado"]].copy()
-    pending_ensayos_df.columns = ["Proyecto", "Etapa", "Ensayo pendiente", "Estado"]
+    ][["Proyecto", "ETAPA", "MesNombre", "ENSAYO", "Estado"]].copy()
+    pending_ensayos_df.columns = ["Proyecto", "Etapa", "Mes", "Ensayo pendiente", "Estado"]
 
     if not pending_ensayos_df.empty:
         pending_ensayos_df = pending_ensayos_df.sort_values(
-            ["Proyecto", "Etapa", "Estado", "Ensayo pendiente"],
-            ascending=[True, True, True, True],
+            ["Proyecto", "Etapa", "Mes", "Estado", "Ensayo pendiente"],
+            ascending=[True, True, True, True, True],
         )
         rows_pending = "".join(
-            f"<tr><td>{r.Proyecto}</td><td>{r.Etapa}</td><td>{r['Ensayo pendiente']}</td><td>{badge(r.Estado)}</td></tr>"
+            f"<tr><td>{r.Proyecto}</td><td>{r.Etapa}</td><td style='color:{pending_text_color(r.Estado)};font-weight:700;'>{r.Mes}</td><td style='color:{pending_text_color(r.Estado)};font-weight:700;'>{r['Ensayo pendiente']}</td><td>{badge(r.Estado)}</td></tr>"
             for _, r in pending_ensayos_df.iterrows()
         )
         st.markdown(
             f'<div style="overflow-x:auto;border-radius:10px;border:1px solid #E5E9F0;max-height:420px;overflow-y:auto;">'
             f'<table class="rt"><thead><tr>'
-            f'<th>Proyecto</th><th>Etapa</th><th>Ensayo pendiente</th><th>Estado</th>'
+            f'<th>Proyecto</th><th>Etapa</th><th>Mes</th><th>Ensayo pendiente</th><th>Estado</th>'
             f'</tr></thead><tbody>{rows_pending}</tbody></table></div>',
             unsafe_allow_html=True
         )
@@ -1712,107 +1731,16 @@ if current_page == "Ensayos":
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
-# TAB 3
-# ══════════════════════════════════════════════════════════════════════════════
-if current_page == "Línea de Tiempo y Alertas":
-    render_page_heading("Línea de Tiempo y Alertas", "Alertas y evolución acumulada por proyecto")
-    f3a, f3b = st.columns([2, 1])
-    sel3_proy = f3a.selectbox("Proyecto",      ALL_P,  key="t3p")
-    sel3_mes  = f3b.selectbox("Mes con datos", ["Todos"] + [MESES[m] for m in meses_con_datos], key="t3m")
-
-    df3 = filt(df_full, "Proyecto", sel3_proy, "Todos")
-    sm3 = meses_con_datos if sel3_mes == "Todos" else [k for k, v in MESES.items() if v == sel3_mes]
-
-    # Semáforo
-    tasa3 = (df3[df3["EsEjecutado"]]
-               .groupby("Proyecto")
-               .apply(lambda g: pd.Series({
-                   "tasa": round((((g["Cantidad_num"] == 1).sum()) + ((g["Cantidad_num"] == 0.5).sum() * 0.5)) / len(g) * 100, 1) if len(g) > 0 else 0.0,
-                   "ej":   len(g),
-                   "crit": int((g["Cantidad_num"]==0).sum()),
-               }))
-               .reset_index())
-
-    st.markdown(f"### Semáforo por Proyecto")
-    st.markdown(f"Cumplimiento global · 🟢 ≥{META}%  🟡 {int(META*.6)}–{META-1}%  🔴 <{int(META*.6)}%")
-    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-    st.markdown(
-        '<div class="sem-grid">' +
-        "".join(sem_card(r.Proyecto, r.tasa, int(r.ej), int(r.crit))
-                for _, r in tasa3.sort_values("tasa", ascending=False).iterrows()) +
-        "</div>",
-        unsafe_allow_html=True)
-
-    # Área acumulada
-    st.markdown(section_header("Evolución Acumulada por Estado", "Progresión mensual · curvas suavizadas"), unsafe_allow_html=True)
-    st.markdown('<div class="dash-card">', unsafe_allow_html=True)
-    rows_a = []
-    for m in sorted(sm3):
-        sub_m = df3[df3["EsEjecutado"] & (df3["Mes"] == m)]
-        rows_a.append({"Mes": MESES[m],
-                        "Completo":     int((sub_m["Cantidad_num"]==1).sum()),
-                        "Incompleto":   int((sub_m["Cantidad_num"]==0.5).sum()),
-                        "No Realizado": int((sub_m["Cantidad_num"]==0).sum())})
-    adf = pd.DataFrame(rows_a)
-    if not adf.empty:
-        for c_ in ["Completo","Incompleto","No Realizado"]:
-            adf[f"{c_}_ac"] = adf[c_].cumsum()
-        fig_area = go.Figure()
-        for est, fc in [("Completo","rgba(107,191,158,.15)"),
-                         ("Incompleto","rgba(232,193,122,.12)"),
-                         ("No Realizado","rgba(217,139,139,.10)")]:
-            fig_area.add_trace(go.Scatter(
-                x=adf["Mes"], y=adf[f"{est}_ac"],
-                name=f"{est} (acum.)", mode="lines+markers",
-                line=dict(color=COLORS[est], width=2.5, shape="spline", smoothing=1.0),
-                marker=dict(size=8, line=dict(color="white", width=1.5)),
-                fill="tozeroy", fillcolor=fc,
-                hovertemplate=f"<b>%{{x}}</b><br>{est} acum.: %{{y}}<extra></extra>",
-            ))
-        apply_base(fig_area, h=300)
-        fig_area.update_layout(xaxis=dict(gridcolor="#F3F4F6"), yaxis=dict(gridcolor="#F3F4F6"))
-        st.plotly_chart(fig_area, use_container_width=True, config={"displayModeBar": False})
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # Tabla críticos
-    st.markdown(section_header("🚨 Ensayos Críticos — No Realizados", "Ensayos con valor = 0 en el período analizado"), unsafe_allow_html=True)
-    st.markdown('<div class="dash-card">', unsafe_allow_html=True)
-    crit_df = df3[
-        df3["EsEjecutado"] & (df3["Cantidad_num"] == 0) & df3["Mes"].isin(sm3)
-    ][["Proyecto","ETAPA","MATERIAL","ENSAYO","NTC","MesNombre","Estado"]].copy()
-    crit_df.columns = ["Proyecto","Etapa","Material","Ensayo","NTC","Mes","Estado"]
-    if not crit_df.empty:
-        col_dl, _ = st.columns([1, 5])
-        with col_dl:
-            st.download_button("⬇ Exportar CSV",
-                               crit_df.to_csv(index=False).encode("utf-8"),
-                               "ensayos_criticos.csv", "text/csv", key="dl3")
-        rows_t = "".join(
-            f"<tr><td>{r.Proyecto}</td><td>{r.Etapa}</td><td>{r.Material}</td>"
-            f"<td>{r.Ensayo}</td><td>{r.NTC}</td><td>{r.Mes}</td><td>{badge(r.Estado)}</td></tr>"
-            for _, r in crit_df.iterrows())
-        st.markdown(
-            f'<div style="overflow-x:auto;border-radius:10px;border:1px solid #E5E9F0;">'
-            f'<table class="rt"><thead><tr><th>Proyecto</th><th>Etapa</th><th>Material</th>'
-            f'<th>Ensayo</th><th>NTC</th><th>Mes</th><th>Estado</th></tr></thead>'
-            f'<tbody>{rows_t}</tbody></table></div>',
-            unsafe_allow_html=True)
-    else:
-        st.markdown('<div class="ok-note">✅ No hay ensayos sin realizar en el período seleccionado.</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# ══════════════════════════════════════════════════════════════════════════════
 # TAB 4
 # ══════════════════════════════════════════════════════════════════════════════
 if current_page == "Consulta de Ensayos":
-    render_page_heading("Consulta de Ensayos", "Filtra y encuentra exactamente qué ensayos aplican según proyecto, mes y material")
+    render_page_heading("Consulta de Ensayos", "Filtra y encuentra exactamente qué ensayos aplican según proyecto, mes y estado")
     st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
     q1, q2, q3 = st.columns(3)
     sel4_proy  = q1.selectbox("Proyecto",  ALL_P,   key="t4p")
     sel4_etapa = q1.selectbox("Etapa",     ALL_E,   key="t4e")
     sel4_mes   = q2.selectbox("Mes",       ALL_M,   key="t4m")
-    sel4_mat   = q2.selectbox("Material",  ALL_MAT, key="t4mat")
     sel4_est   = q3.selectbox("Estado",    ALL_EST, key="t4est")
     buscar     = q3.text_input("🔎 Buscar por nombre de ensayo",
                                placeholder="Ej: resistencia, fraguado, granulometría...")
@@ -1829,17 +1757,8 @@ if current_page == "Consulta de Ensayos":
     if sel4_proy  != "Todos": df4 = df4[df4["Proyecto"] == sel4_proy]
     if sel4_etapa != "Todas": df4 = df4[df4["ETAPA"]    == sel4_etapa]
     if sel4_mes   != "Todos": df4 = df4[df4["Mes"].isin([k for k,v in MESES.items() if v == sel4_mes])]
-    if sel4_mat   != "Todos": df4 = df4[df4["MATERIAL"] == sel4_mat]
     if sel4_est   != "Todos": df4 = df4[df4["Estado"]   == sel4_est]
     if buscar:                df4 = df4[df4["ENSAYO"].str.contains(buscar, case=False, na=False)]
-
-    comp4, inc4, no4, plan4, pend4, tot4, tasa4 = get_kpis(df4)
-    a, b, c_, d, e = st.columns(5)
-    a.markdown(kpi("🔍","Resultados",    f"{len(df4):,}", "registros","kp-slate"),  unsafe_allow_html=True)
-    b.markdown(kpi("📋","Planeados",     f"{plan4:,}",    f"Pendientes: {pend4:,}", "kp-blue"),   unsafe_allow_html=True)
-    c_.markdown(kpi("✅","Completos",    f"{comp4:,}",    "",          "kp-green"),  unsafe_allow_html=True)
-    d.markdown(kpi("⚠️","Incompletos",   f"{inc4:,}",     "",          "kp-yellow"), unsafe_allow_html=True)
-    e.markdown(kpi("❌","No Realizados", f"{no4:,}",      "",          "kp-red"),    unsafe_allow_html=True)
 
     st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
     st.markdown(section_header("Resultados de la Consulta"), unsafe_allow_html=True)
@@ -1850,9 +1769,11 @@ if current_page == "Consulta de Ensayos":
         disp.columns = ["Proyecto","Etapa","Material","Ensayo","NTC","Frecuencia","Mes","Estado"]
         col_dl4, _ = st.columns([1, 5])
         with col_dl4:
-            st.download_button("⬇ Descargar CSV",
-                               disp.to_csv(index=False).encode("utf-8"),
-                               "consulta_ensayos.csv", "text/csv", key="dl4")
+            st.download_button("⬇ Descargar Excel",
+                               dataframe_to_excel_bytes(disp),
+                               "consulta_ensayos.xlsx",
+                               "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                               key="dl4")
         prev = disp.head(50)
         rows4 = "".join(
             f"<tr><td>{r.Proyecto}</td><td>{r.Etapa}</td><td>{r.Material}</td>"
@@ -1939,9 +1860,9 @@ if current_page == "Controles":
         rows_html = "".join(
             f"<tr>"
             f"<td>{row['Proyecto']}</td>"
-            f"<td style='white-space:normal;line-height:1.45;'>{row['Control de torre']}</td>"
-            f"<td style='white-space:normal;line-height:1.45;'>{row['Producto terminado de torres']}</td>"
-            f"<td style='white-space:normal;line-height:1.45;'>{row['Control zonas comunes']}</td>"
+            f"<td style='white-space:normal;line-height:1.45;color:#8B2B2B;font-weight:700;'>{row['Control de torre']}</td>"
+            f"<td style='white-space:normal;line-height:1.45;color:#8B2B2B;font-weight:700;'>{row['Producto terminado de torres']}</td>"
+            f"<td style='white-space:normal;line-height:1.45;color:#8B2B2B;font-weight:700;'>{row['Control zonas comunes']}</td>"
             f"</tr>"
             for row in pending_rows
         )
