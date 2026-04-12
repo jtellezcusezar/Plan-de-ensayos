@@ -855,8 +855,8 @@ def build_city_combo_chart_config_from_series(city_month_series, cusezar_2026_mo
             "smooth": True,
             "connectNulls": False,
             "symbolSize": 7,
-            "lineStyle": {"width": 2.5, "type": "dashed", "color": "#2C3E50"},
-            "itemStyle": {"color": "#2C3E50"},
+            "lineStyle": {"width": 2.5, "type": "dashed", "color": "#5E82A7"},
+            "itemStyle": {"color": "#5E82A7"},
             "data": sanitize_echarts_series(cusezar_2025_month_series),
         }],
     }
