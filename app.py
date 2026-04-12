@@ -1344,7 +1344,7 @@ if current_page == "Informe General":
 
     mes0_num = next((k for k, v in MESES.items() if v == sel0_mes), None)
 
-    st.markdown(section_header("Informe General de {sel0_mes}", f"Resumen consolidado por proyecto"), unsafe_allow_html=True)
+    st.markdown(section_header(f"Informe General de {sel0_mes}", f"Resumen consolidado por proyecto"), unsafe_allow_html=True)
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
     st.markdown(heatmap_legend(), unsafe_allow_html=True)
     st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
