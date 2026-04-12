@@ -4,10 +4,12 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from pathlib import Path
+from calendar import monthrange
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from io import BytesIO
 import base64
+import html
 from openpyxl import load_workbook
 import json
 from uuid import uuid4
@@ -451,15 +453,537 @@ def dataframe_to_excel_bytes(df):
     return output.getvalue()
 
 
-def build_sidebar_logo_html(path):
+def get_image_data_uri(path):
     if not path.exists():
         return ""
+    ext = path.suffix.lower()
+    mime_map = {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".webp": "image/webp",
+    }
+    mime = mime_map.get(ext, "application/octet-stream")
     encoded = base64.b64encode(path.read_bytes()).decode("utf-8")
+    return f"data:{mime};base64,{encoded}"
+
+
+def build_sidebar_logo_html(path):
+    image_uri = get_image_data_uri(path)
+    if not image_uri:
+        return ""
     return (
         '<div class="sidebar-logo-wrap">'
-        f'<img src="data:image/png;base64,{encoded}" alt="Cusezar" class="sidebar-logo-img" />'
+        f'<img src="{image_uri}" alt="Cusezar" class="sidebar-logo-img" />'
         '</div>'
     )
+
+
+def month_name_to_number(month_name):
+    return next((k for k, v in MESES.items() if v == month_name), None)
+
+
+def build_report_cutoff_text(month_num, year=None):
+    report_year = year or datetime.now(ZoneInfo("America/Bogota")).year
+    last_day = monthrange(report_year, month_num)[1]
+    return f"{last_day} de {MESES[month_num].lower()} del {report_year}"
+
+
+def rows_have_visible_values(rows):
+    return any(
+        any(value is not None for value in row.get("values", []))
+        for row in rows
+    )
+
+
+def build_general_report_table_html(tab0_data, mes_num):
+    materiales_map = tab0_data["material_month_maps"][mes_num]
+    torre_map = tab0_data["control_month_maps"]["Torre"][mes_num]
+    producto_map = tab0_data["control_month_maps"]["Producto terminado"][mes_num]
+    zonas_map = tab0_data["control_month_maps"]["Zonas comunes"][mes_num]
+    diseno_map = tab0_data["control_month_maps"]["Diseño"][mes_num]
+    curado_map = tab0_data["control_month_maps"]["Curado"][mes_num]
+    project_city_map = tab0_data["project_city_map"]
+    mostrar_diseno = tab0_data["include_design"]
+    acumulado_map = tab0_data["accumulated_maps"][mes_num]
+
+    proyectos_general = sorted(
+        set(materiales_map.keys()) |
+        set(torre_map.keys()) |
+        set(producto_map.keys()) |
+        set(zonas_map.keys()) |
+        set(diseno_map.keys()) |
+        set(curado_map.keys()) |
+        set(acumulado_map.keys())
+    )
+
+    header_cells = [
+        "<th>Proyecto</th>",
+        "<th>Control de Materiales</th>",
+        "<th>Control de Torre</th>",
+        "<th>Control de producto terminado</th>",
+        "<th>Control de Zonas comunes</th>",
+    ]
+    if mostrar_diseno:
+        header_cells.append("<th>Control de diseño</th>")
+    header_cells.extend([
+        "<th>Curado</th>",
+        "<th>Promedio mes</th>",
+        "<th>Promedio acumulado</th>",
+    ])
+
+    city_groups = {}
+    for proyecto in proyectos_general:
+        ciudad = project_city_map.get(normalize_project_key(proyecto), "Sin ciudad")
+        city_groups.setdefault(ciudad, []).append(proyecto)
+
+    body_rows = []
+    corp_row_values = []
+    for ciudad in sorted(city_groups):
+        city_projects = sorted(city_groups[ciudad])
+        city_row_values = []
+
+        for proyecto in city_projects:
+            row_values = [
+                materiales_map.get(proyecto),
+                torre_map.get(proyecto),
+                producto_map.get(proyecto),
+                zonas_map.get(proyecto),
+            ]
+            if mostrar_diseno:
+                row_values.append(diseno_map.get(proyecto))
+            row_values.append(curado_map.get(proyecto))
+
+            promedio_mes = average_values(row_values)
+            promedio_acumulado = acumulado_map.get(proyecto)
+            city_row_values.append(row_values + [promedio_mes, promedio_acumulado])
+            corp_row_values.append(row_values + [promedio_mes, promedio_acumulado])
+
+            row_html = [f"<tr><td>{html.escape(str(proyecto))}</td>"]
+            row_html.append(percent_cell_html(materiales_map.get(proyecto)))
+            row_html.append(percent_cell_html(torre_map.get(proyecto)))
+            row_html.append(percent_cell_html(producto_map.get(proyecto)))
+            row_html.append(percent_cell_html(zonas_map.get(proyecto)))
+            if mostrar_diseno:
+                row_html.append(percent_cell_html(diseno_map.get(proyecto)))
+            row_html.append(percent_cell_html(curado_map.get(proyecto)))
+            row_html.append(percent_cell_html(promedio_mes))
+            row_html.append(percent_cell_html(promedio_acumulado))
+            row_html.append("</tr>")
+            body_rows.append("".join(row_html))
+
+        city_columns_avg = []
+        total_columns = 8 if mostrar_diseno else 7
+        for col_idx in range(total_columns):
+            city_columns_avg.append(average_values(row[col_idx] for row in city_row_values))
+
+        city_row_html = [f'<tr class="ig-summary-row"><td>{html.escape(str(ciudad))}</td>']
+        for value in city_columns_avg:
+            city_row_html.append(percent_cell_html(value))
+        city_row_html.append("</tr>")
+        body_rows.append("".join(city_row_html))
+
+    corp_columns_avg = []
+    total_columns = 8 if mostrar_diseno else 7
+    for col_idx in range(total_columns):
+        corp_columns_avg.append(average_values(row[col_idx] for row in corp_row_values))
+
+    corp_row_html = ['<tr class="ig-corp-row"><td>Cusezar</td>']
+    for value in corp_columns_avg:
+        corp_row_html.append(percent_cell_html(value))
+    corp_row_html.append("</tr>")
+    body_rows.append("".join(corp_row_html))
+
+    return (
+        '<div class="ig-wrap">'
+        '<div class="report-table-shell">'
+        f'<table class="ig-table"><thead><tr>{"".join(header_cells)}</tr></thead>'
+        f'<tbody>{"".join(body_rows)}</tbody></table></div></div>'
+    )
+
+
+def build_pending_ensayos_project_map(df_ensayos, month_num):
+    pending_df = df_ensayos[
+        (df_ensayos["Mes"] == month_num) &
+        (df_ensayos["Cantidad_num"].isin([0, 0.5]))
+    ].copy()
+    pending_map = {}
+    if pending_df.empty:
+        return pending_map
+
+    pending_df = pending_df.sort_values(
+        ["Proyecto", "ETAPA", "Estado", "ENSAYO"],
+        ascending=[True, True, True, True],
+    )
+
+    for proyecto, group in pending_df.groupby("Proyecto", sort=True):
+        items = []
+        for _, row in group.iterrows():
+            etapa = str(row.get("ETAPA", "")).strip()
+            ensayo = str(row.get("ENSAYO", "")).strip()
+            estado = str(row.get("Estado", "")).strip()
+            if not ensayo or ensayo.lower() in {"nan", "none"}:
+                continue
+            item = f"{etapa}: {ensayo}" if etapa and etapa.lower() not in {"nan", "none"} else ensayo
+            if estado and estado.lower() not in {"nan", "none"}:
+                item = f"{item} ({estado})"
+            items.append(item)
+
+        unique_items = list(dict.fromkeys(items))
+        if unique_items:
+            pending_map[proyecto] = "<br>".join(html.escape(item) for item in unique_items)
+
+    return pending_map
+
+
+def build_report_pending_table_html(df_ensayos, df_ctrl, month_num):
+    df_ctrl_month = df_ctrl[df_ctrl["Mes"] == month_num].copy() if "Mes" in df_ctrl.columns else df_ctrl.copy()
+    proyectos_ctrl = sorted(
+        set(df_ctrl_month["Proyecto"].dropna().tolist()) |
+        set(df_ensayos["Proyecto"].dropna().tolist())
+    ) if {"Proyecto"}.issubset(df_ctrl_month.columns) and {"Proyecto"}.issubset(df_ensayos.columns) else []
+
+    ctrl_rows = build_pending_controls_rows(df_ctrl_month, proyectos_ctrl, show_repeat_count=False)
+    ctrl_map = {row["Proyecto"]: row for row in ctrl_rows}
+    ens_map = build_pending_ensayos_project_map(df_ensayos, month_num)
+
+    all_projects = sorted(set(ctrl_map.keys()) | set(ens_map.keys()))
+    if not all_projects:
+        return ""
+
+    empty_html = '<span style="color:#9CA3AF;">—</span>'
+    rows_html = []
+    for proyecto in all_projects:
+        ctrl_row = ctrl_map.get(proyecto, {})
+        rows_html.append(
+            "<tr>"
+            f"<td>{html.escape(str(proyecto))}</td>"
+            f"<td style='white-space:normal;line-height:1.45;'>{ctrl_row.get('Control de torre', empty_html)}</td>"
+            f"<td style='white-space:normal;line-height:1.45;'>{ctrl_row.get('Producto terminado de torres', empty_html)}</td>"
+            f"<td style='white-space:normal;line-height:1.45;'>{ctrl_row.get('Control zonas comunes', empty_html)}</td>"
+            f"<td style='white-space:normal;line-height:1.45;'>{ens_map.get(proyecto, empty_html)}</td>"
+            "</tr>"
+        )
+
+    return (
+        '<div class="report-table-shell">'
+        '<table class="rt"><thead><tr>'
+        '<th>Proyecto</th>'
+        '<th>Control de torre</th>'
+        '<th>Producto terminado de torres</th>'
+        '<th>Control zonas comunes</th>'
+        '<th>Ensayos pendientes</th>'
+        f'</tr></thead><tbody>{"".join(rows_html)}</tbody></table></div>'
+    )
+
+
+def build_report_artifacts(month_num):
+    tab0_data = build_tab0_precomputed_data(EXCEL_SIGNATURE)
+    report_year = datetime.now(ZoneInfo("America/Bogota")).year
+    cutoff_text = build_report_cutoff_text(month_num, report_year)
+    logo_uri = get_image_data_uri(SIDEBAR_LOGO_PATH)
+    logo_block = (
+        '<div class="report-logo-wrap">'
+        f'<img src="{logo_uri}" alt="Cusezar" class="report-logo-img" />'
+        '</div>'
+    ) if logo_uri else ""
+
+    general_table_html = build_general_report_table_html(tab0_data, month_num)
+    chart_specs = []
+    report_sections = []
+
+    chart_config = tab0_data["city_chart_config"]
+    if chart_config:
+        combo_option, combo_height = chart_config
+        combo_id = f"report-chart-{uuid4().hex}"
+        chart_specs.append({
+            "id": combo_id,
+            "height": combo_height,
+            "option_json": json.dumps(combo_option, ensure_ascii=False),
+        })
+        report_sections.append(
+            '<section class="pdf-section">'
+            '<div class="report-section-title">Cumplimiento plan de calidad 2026</div>'
+            '<div class="report-section-sub">Barras por ciudad y línea de Cusezar con el promedio mensual de todas las ciudades con dato</div>'
+            f'<div id="{combo_id}" class="report-chart" style="height:{combo_height}px;"></div>'
+            '</section>'
+        )
+
+    ensayos_rows = build_tab2_heatmap_rows_from_summary(build_tab2_precomputed_data(EXCEL_SIGNATURE))
+    if rows_have_visible_values(ensayos_rows):
+        ensayos_option, ensayos_height = build_echarts_heatmap_config(ensayos_rows)
+        ensayos_id = f"report-chart-{uuid4().hex}"
+        chart_specs.append({
+            "id": ensayos_id,
+            "height": ensayos_height,
+            "option_json": json.dumps(ensayos_option, ensure_ascii=False),
+        })
+        report_sections.append(
+            '<section class="pdf-section">'
+            '<div class="report-section-title">Cumplimiento de ejecución de control de ensayos</div>'
+            f'{heatmap_legend()}'
+            f'<div id="{ensayos_id}" class="report-chart" style="height:{ensayos_height}px;"></div>'
+            '</section>'
+        )
+
+    for area in CONTROL_AREA_OPTIONS:
+        area_rows = build_heatmap_rows(df_controles, df_full, area)
+        if not rows_have_visible_values(area_rows):
+            continue
+        area_option, area_height = build_echarts_heatmap_config(area_rows)
+        area_id = f"report-chart-{uuid4().hex}"
+        chart_specs.append({
+            "id": area_id,
+            "height": area_height,
+            "option_json": json.dumps(area_option, ensure_ascii=False),
+        })
+        report_sections.append(
+            '<section class="pdf-section">'
+            f'<div class="report-section-title">{html.escape(control_area_title(area))}</div>'
+            '<div class="report-section-sub">Promedio mensual con 12 meses fijos. Los registros sin valor no se incluyen en el cálculo.</div>'
+            f'{heatmap_legend()}'
+            f'<div id="{area_id}" class="report-chart" style="height:{area_height}px;"></div>'
+            '</section>'
+        )
+
+    pending_table_html = build_report_pending_table_html(df_full, df_controles, month_num)
+    pending_section = (
+        '<section class="pdf-section">'
+        '<div class="report-section-title">Controles pendientes</div>'
+        '<div class="report-section-sub">Pendientes del mes seleccionado, con la columna adicional de ensayos pendientes para este informe.</div>'
+        f'{pending_table_html}'
+        '</section>'
+    ) if pending_table_html else (
+        '<section class="pdf-section">'
+        '<div class="report-section-title">Controles pendientes</div>'
+        '<div class="report-empty">No se encontraron controles ni ensayos pendientes para el mes seleccionado.</div>'
+        '</section>'
+    )
+
+    report_html = f"""
+    <div class="pdf-report">
+      <style>
+        .pdf-report {{
+          width: 1120px;
+          box-sizing: border-box;
+          background: #FFFFFF;
+          color: #272829;
+          font-family: Inter, Arial, sans-serif;
+          padding: 28px 24px 32px 24px;
+        }}
+        .pdf-section {{
+          margin-bottom: 28px;
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }}
+        .report-header {{
+          margin-bottom: 26px;
+          border-bottom: 1px solid #E5E9F0;
+          padding-bottom: 18px;
+        }}
+        .report-logo-wrap {{
+          display: inline-flex;
+          justify-content: center;
+          align-items: center;
+          padding: 12px 18px;
+          background: #FF0000;
+          border-radius: 18px;
+          margin-bottom: 16px;
+        }}
+        .report-logo-img {{
+          display: block;
+          width: 170px;
+          height: auto;
+        }}
+        .report-title {{
+          font-size: 26px;
+          line-height: 1.25;
+          font-weight: 800;
+          color: #111827;
+        }}
+        .report-section-title {{
+          font-size: 18px;
+          line-height: 1.2;
+          font-weight: 800;
+          color: #111827;
+          margin-bottom: 4px;
+        }}
+        .report-section-sub {{
+          font-size: 12px;
+          line-height: 1.5;
+          color: #6B7280;
+          margin-bottom: 12px;
+        }}
+        .report-empty {{
+          padding: 12px 14px;
+          border: 1px solid #E5E9F0;
+          border-radius: 12px;
+          color: #6B7280;
+          background: #F8FAFC;
+          font-size: 12px;
+        }}
+        .report-table-shell {{
+          width: 100%;
+          border-radius: 10px;
+          border: 1px solid #E5E9F0;
+          overflow: hidden;
+          background: #FFFFFF;
+        }}
+        .report-chart {{
+          width: 100%;
+        }}
+        .hml {{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; align-items:center; }}
+        .hml span {{ font-size:11px; font-weight:600; padding:3px 10px; border-radius:20px; }}
+        .rt {{ width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed; }}
+        .rt th {{ background:#B5545C; padding:9px 10px; text-align:left; font-size:10px; font-weight:700; color:#FFF7F7; text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid #9F434B; white-space:normal; line-height:1.2; word-break:break-word; }}
+        .rt td {{ padding:9px 10px; border-bottom:1px solid #F1D9DB; color:#6B7280; line-height:1.35; word-break:break-word; vertical-align:top; }}
+        .rt td:first-child {{ background:#F8E8E8; color:#8F3942; font-weight:700; }}
+        .rt tr:last-child td {{ border-bottom:none; }}
+        .ig-wrap {{ display:flex; justify-content:center; }}
+        .ig-table {{ width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed; }}
+        .ig-table th {{ background:#B5545C; padding:8px 8px; text-align:center; font-size:10px; font-weight:700; color:#FFF7F7; text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid #9F434B; white-space:normal; line-height:1.2; word-break:break-word; }}
+        .ig-table td {{ padding:7px 8px; border-bottom:1px solid #F1D9DB; color:#6B7280; text-align:center; line-height:1.15; word-break:break-word; }}
+        .ig-table td:first-child {{ background:#F8E8E8; color:#8F3942; font-weight:700; text-align:center; }}
+        .ig-table tr.ig-summary-row td {{ background:#F8E8E8 !important; border-top:1px solid #E8CDD0; border-bottom:1px solid #E8CDD0; font-weight:700; color:#8F3942 !important; }}
+        .ig-table tr.ig-summary-row td:first-child {{ background:#F8E8E8 !important; color:#8F3942 !important; text-transform:uppercase; letter-spacing:.04em; }}
+        .ig-table tr.ig-summary-row td.h100,
+        .ig-table tr.ig-summary-row td.h75,
+        .ig-table tr.ig-summary-row td.h50,
+        .ig-table tr.ig-summary-row td.h25,
+        .ig-table tr.ig-summary-row td.h0,
+        .ig-table tr.ig-summary-row td.hna {{ background:#F8E8E8 !important; }}
+        .ig-table tr.ig-corp-row td {{ background:#E1B7BB !important; border-top:1px solid #C89499; border-bottom:1px solid #C89499; font-weight:800; }}
+        .ig-table tr.ig-corp-row td:first-child {{ background:#E1B7BB !important; color:#5E1F28 !important; text-transform:uppercase; letter-spacing:.05em; }}
+        .ig-table tr.ig-corp-row td.h100,
+        .ig-table tr.ig-corp-row td.h75,
+        .ig-table tr.ig-corp-row td.h50,
+        .ig-table tr.ig-corp-row td.h25,
+        .ig-table tr.ig-corp-row td.h0,
+        .ig-table tr.ig-corp-row td.hna {{ background:#E1B7BB !important; }}
+        .ig-table tr:last-child td {{ border-bottom:none; }}
+        .h100 {{ background:#B8E4D0; color:#2D6A4F; }}
+        .h75 {{ background:#DDE8B2; color:#667A1E; }}
+        .h50 {{ background:#F4E1A6; color:#A97B12; }}
+        .h25 {{ background:#EEC39F; color:#A45724; }}
+        .h0 {{ background:#F0C8C8; color:#8B2B2B; }}
+        .hna {{ background:#F8F9FB; color:#C4CAD4; font-weight:500; font-size:11px; }}
+      </style>
+      <div class="report-header">
+        {logo_block}
+        <div class="report-title">Informe de Aplicación del plan de calidad - Corte al {html.escape(cutoff_text)}</div>
+      </div>
+      <section class="pdf-section">
+        <div class="report-section-title">Informe General de {html.escape(MESES[month_num])}</div>
+        <div class="report-section-sub">Resumen consolidado por proyecto del mes seleccionado.</div>
+        {heatmap_legend()}
+        {general_table_html}
+      </section>
+      {"".join(report_sections)}
+      {pending_section}
+    </div>
+    """
+
+    filename = f"informe_plan_calidad_{report_year}_{month_num:02d}.pdf"
+    return report_html, chart_specs, filename
+
+
+def render_pdf_download_button(report_html, chart_specs, filename, button_label="Informe"):
+    component_id = f"pdf-report-{uuid4().hex}"
+    report_html_js = json.dumps(report_html, ensure_ascii=False)
+    chart_specs_js = json.dumps(chart_specs, ensure_ascii=False)
+    filename_js = json.dumps(filename, ensure_ascii=False)
+    button_label_js = json.dumps(button_label, ensure_ascii=False)
+
+    component_html = f"""
+    <div style="padding-top:27px;">
+      <button id="{component_id}-btn" style="width:100%;background:#B5545C;color:#FFF7F7;border:1px solid #9F434B;border-radius:10px;padding:9px 12px;font-size:13px;font-weight:700;cursor:pointer;">
+        {button_label}
+      </button>
+      <div id="{component_id}-status" style="font-family:Inter, Arial, sans-serif;font-size:11px;color:#9CA3AF;margin-top:6px;min-height:14px;"></div>
+      <div id="{component_id}-host" style="position:absolute;left:-20000px;top:0;width:1180px;background:#FFFFFF;"></div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script>
+      const reportHtml = {report_html_js};
+      const chartSpecs = {chart_specs_js};
+      const filename = {filename_js};
+      const buttonLabel = {button_label_js};
+      const host = document.getElementById('{component_id}-host');
+      const button = document.getElementById('{component_id}-btn');
+      const status = document.getElementById('{component_id}-status');
+
+      host.innerHTML = reportHtml;
+
+      function reviveEchartsFunctions(value) {{
+        if (Array.isArray(value)) return value.map(reviveEchartsFunctions);
+        if (value && typeof value === 'object') {{
+          for (const key of Object.keys(value)) {{
+            value[key] = reviveEchartsFunctions(value[key]);
+          }}
+          return value;
+        }}
+        if (typeof value === 'string' && value.startsWith('__JS__') && value.endsWith('__JS__')) {{
+          const fnBody = value.slice(6, -6);
+          return eval('(' + fnBody + ')');
+        }}
+        return value;
+      }}
+
+      async function waitForLibrary(checkFn, timeoutMs) {{
+        const startedAt = Date.now();
+        while (!checkFn()) {{
+          if (Date.now() - startedAt > timeoutMs) {{
+            throw new Error('Timeout cargando librerías del informe');
+          }}
+          await new Promise(resolve => setTimeout(resolve, 150));
+        }}
+      }}
+
+      function renderCharts() {{
+        chartSpecs.forEach((spec) => {{
+          const el = document.getElementById(spec.id);
+          if (!el || el.dataset.rendered === '1') return;
+          const chart = echarts.init(el, null, {{ renderer: 'canvas' }});
+          const option = reviveEchartsFunctions(JSON.parse(spec.option_json));
+          chart.setOption(option);
+          el.dataset.rendered = '1';
+        }});
+      }}
+
+      async function generatePdf() {{
+        button.disabled = true;
+        button.style.opacity = '0.75';
+        status.textContent = 'Generando informe...';
+        try {{
+          await waitForLibrary(() => typeof window.echarts !== 'undefined', 15000);
+          await waitForLibrary(() => typeof window.html2pdf !== 'undefined', 15000);
+          renderCharts();
+          await new Promise(resolve => setTimeout(resolve, 1400));
+          const reportNode = host.firstElementChild;
+          await html2pdf().set({{
+            margin: [8, 8, 8, 8],
+            filename: filename,
+            image: {{ type: 'jpeg', quality: 0.98 }},
+            html2canvas: {{ scale: 2, useCORS: true, backgroundColor: '#FFFFFF' }},
+            jsPDF: {{ unit: 'mm', format: 'a4', orientation: 'landscape' }},
+            pagebreak: {{ mode: ['css', 'legacy'] }},
+          }}).from(reportNode).save();
+          status.textContent = 'PDF generado.';
+        }} catch (error) {{
+          console.error(error);
+          status.textContent = 'No fue posible generar el PDF en este momento.';
+        }} finally {{
+          button.disabled = false;
+          button.style.opacity = '1';
+          button.textContent = buttonLabel;
+        }}
+      }}
+
+      button.addEventListener('click', generatePdf);
+    </script>
+    """
+    components.html(component_html, height=76, scrolling=False)
 
 def get_kpis(df):
     ex   = df[df["EsEjecutado"]]
@@ -862,8 +1386,8 @@ def build_city_combo_chart_config_from_series(city_month_series, cusezar_2026_mo
             "smooth": True,
             "connectNulls": False,
             "symbolSize": 8,
-            "lineStyle": {"width": 3, "color": "#B5545C"},
-            "itemStyle": {"color": "#B5545C"},
+            "lineStyle": {"width": 3, "color": "#FF0000"},
+            "itemStyle": {"color": "#FF0000"},
             "data": sanitize_echarts_series(cusezar_2026_month_series),
         }, {
             "name": "Cusezar 2025",
@@ -1352,7 +1876,7 @@ if current_page == "Informe General":
     default_mes_general = MESES[MESES_VENCIDOS[-1]] if MESES_VENCIDOS else list(MESES.values())[0]
     default_mes_general_idx = ALL_M.index(default_mes_general) if default_mes_general in ALL_M else 1
 
-    gcol, _ = st.columns([1.2, 4.8])
+    gcol, bcol, _ = st.columns([1.2, 0.85, 3.95])
     with gcol:
         sel0_mes = st.selectbox(
             "Mes",
@@ -1361,7 +1885,10 @@ if current_page == "Informe General":
             key="t0m",
         )
 
-    mes0_num = next((k for k, v in MESES.items() if v == sel0_mes), None)
+    mes0_num = month_name_to_number(sel0_mes)
+    report_html, report_chart_specs, report_filename = build_report_artifacts(mes0_num)
+    with bcol:
+        render_pdf_download_button(report_html, report_chart_specs, report_filename, button_label="Informe")
 
     st.markdown(section_header(f"Informe General de {sel0_mes}", f"Resumen consolidado por proyecto"), unsafe_allow_html=True)
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
