@@ -12,7 +12,7 @@ from uuid import uuid4
 
 st.set_page_config(
     page_title="Plan de Ensayos 2026", page_icon="🏗️",
-    layout="wide", initial_sidebar_state="collapsed",
+    layout="wide", initial_sidebar_state="expanded",
 )
 
 # ── CONSTANTES ─────────────────────────────────────────────────────────────────
@@ -107,18 +107,18 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
 html,body,[class*="css"]{font-family:'Inter',sans-serif!important;}
-#MainMenu,footer,header[data-testid="stHeader"]{visibility:hidden;height:0;}
+#MainMenu,footer{visibility:hidden;}
 .block-container{padding-top:1.25rem!important;max-width:100%!important;padding-left:2rem!important;padding-right:2rem!important;}
-[data-testid="stSidebar"]{display:block!important;background:#F8FAFC;border-right:1px solid #E5E9F0;min-width:250px;max-width:250px;}
-[data-testid="stSidebar"] > div:first-child{padding-top:1.25rem;}
-[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{gap:.35rem;}
+section[data-testid="stSidebar"],[data-testid="stSidebar"]{display:block!important;background:#F8FAFC;border-right:1px solid #E5E9F0;min-width:250px;max-width:250px;}
+section[data-testid="stSidebar"] > div:first-child,[data-testid="stSidebar"] > div:first-child{padding-top:1.25rem;}
+section[data-testid="stSidebar"] [data-testid="stVerticalBlock"],[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{gap:.35rem;}
 .sidebar-brand{font-size:18px;font-weight:800;color:#111827;line-height:1.2;margin-bottom:4px;}
 .sidebar-sub{font-size:11px;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px;}
-[data-testid="stSidebar"] .stRadio > label{display:none;}
-[data-testid="stSidebar"] .stRadio [role="radiogroup"]{gap:8px;}
-[data-testid="stSidebar"] .stRadio [role="radio"]{background:#FFFFFF;border:1px solid #E5E9F0;border-radius:12px;padding:10px 12px;color:#475569;font-size:13px;font-weight:600;box-shadow:0 1px 3px rgba(15,23,42,.04);}
-[data-testid="stSidebar"] .stRadio [role="radio"][aria-checked="true"]{background:#EEF3FA;border-color:#C8DCF0;color:#4A7BA8;box-shadow:0 4px 14px rgba(74,123,168,.08);}
-[data-testid="stSidebar"] .stRadio [role="radio"]:hover{border-color:#CBD5E1;}
+section[data-testid="stSidebar"] .stRadio > label,[data-testid="stSidebar"] .stRadio > label{display:none;}
+section[data-testid="stSidebar"] .stRadio [role="radiogroup"],[data-testid="stSidebar"] .stRadio [role="radiogroup"]{gap:8px;}
+section[data-testid="stSidebar"] .stRadio [role="radio"],[data-testid="stSidebar"] .stRadio [role="radio"]{background:#FFFFFF;border:1px solid #E5E9F0;border-radius:12px;padding:10px 12px;color:#475569;font-size:13px;font-weight:600;box-shadow:0 1px 3px rgba(15,23,42,.04);}
+section[data-testid="stSidebar"] .stRadio [role="radio"][aria-checked="true"],[data-testid="stSidebar"] .stRadio [role="radio"][aria-checked="true"]{background:#EEF3FA;border-color:#C8DCF0;color:#4A7BA8;box-shadow:0 4px 14px rgba(74,123,168,.08);}
+section[data-testid="stSidebar"] .stRadio [role="radio"]:hover,[data-testid="stSidebar"] .stRadio [role="radio"]:hover{border-color:#CBD5E1;}
 .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:0 0 18px 0;padding-bottom:10px;border-bottom:1px solid #E5E9F0;}
 .page-title{font-size:24px;font-weight:800;color:#111827;line-height:1.1;margin:0;}
 .page-sub{font-size:12px;color:#9CA3AF;margin:4px 0 0 0;}
