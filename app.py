@@ -702,7 +702,7 @@ def build_report_artifacts(month_num):
             "option_json": json.dumps(combo_option, ensure_ascii=False),
         })
         report_sections.append(
-            '<section class="pdf-section">'
+            '<section class="pdf-section page-break section-chart">'
             '<div class="report-section-title">Cumplimiento plan de calidad 2026</div>'
             '<div class="report-section-sub">Barras por ciudad y línea de Cusezar con el promedio mensual de todas las ciudades con dato</div>'
             f'<div id="{combo_id}" class="report-chart" style="height:{combo_height}px;"></div>'
@@ -719,7 +719,7 @@ def build_report_artifacts(month_num):
             "option_json": json.dumps(ensayos_option, ensure_ascii=False),
         })
         report_sections.append(
-            '<section class="pdf-section">'
+            '<section class="pdf-section page-break section-heatmap">'
             '<div class="report-section-title">Cumplimiento de ejecución de control de ensayos</div>'
             f'{heatmap_legend()}'
             f'<div id="{ensayos_id}" class="report-chart" style="height:{ensayos_height}px;"></div>'
@@ -738,7 +738,7 @@ def build_report_artifacts(month_num):
             "option_json": json.dumps(area_option, ensure_ascii=False),
         })
         report_sections.append(
-            '<section class="pdf-section">'
+            '<section class="pdf-section page-break section-heatmap">'
             f'<div class="report-section-title">{html.escape(control_area_title(area))}</div>'
             '<div class="report-section-sub">Promedio mensual con 12 meses fijos. Los registros sin valor no se incluyen en el cálculo.</div>'
             f'{heatmap_legend()}'
@@ -748,13 +748,13 @@ def build_report_artifacts(month_num):
 
     pending_table_html = build_report_pending_table_html(df_full, df_controles, month_num)
     pending_section = (
-        '<section class="pdf-section">'
+        '<section class="pdf-section page-break section-pending">'
         '<div class="report-section-title">Controles pendientes</div>'
         '<div class="report-section-sub">Pendientes del mes seleccionado, con la columna adicional de ensayos pendientes para este informe.</div>'
         f'{pending_table_html}'
         '</section>'
     ) if pending_table_html else (
-        '<section class="pdf-section">'
+        '<section class="pdf-section page-break section-pending">'
         '<div class="report-section-title">Controles pendientes</div>'
         '<div class="report-empty">No se encontraron controles ni ensayos pendientes para el mes seleccionado.</div>'
         '</section>'
@@ -763,43 +763,69 @@ def build_report_artifacts(month_num):
     report_html = f"""
     <div class="pdf-report">
       <style>
+        @page {{
+          size: A4 landscape;
+          margin: 8mm;
+        }}
         .pdf-report {{
-          width: 1120px;
+          width: 1030px;
           box-sizing: border-box;
           background: #FFFFFF;
           color: #272829;
           font-family: Inter, Arial, sans-serif;
-          padding: 28px 24px 32px 24px;
+          padding: 18px 18px 20px 18px;
+          overflow: hidden;
         }}
         .pdf-section {{
-          margin-bottom: 28px;
+          width: 100%;
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
           break-inside: avoid;
           page-break-inside: avoid;
         }}
+        .pdf-section.page-break {{
+          page-break-before: always;
+          break-before: page;
+          padding-top: 4px;
+        }}
+        .pdf-section.section-table .report-table-shell,
+        .pdf-section.section-pending .report-table-shell {{
+          transform: scale(.92);
+          transform-origin: top left;
+          width: 108.7%;
+        }}
         .report-header {{
-          margin-bottom: 26px;
+          display: flex;
+          align-items: center;
+          gap: 24px;
+          min-height: 120px;
+          margin-bottom: 12px;
           border-bottom: 1px solid #E5E9F0;
-          padding-bottom: 18px;
+          padding-bottom: 12px;
         }}
         .report-logo-wrap {{
           display: inline-flex;
+          flex: 0 0 auto;
           justify-content: center;
           align-items: center;
           padding: 12px 18px;
           background: #FF0000;
           border-radius: 18px;
-          margin-bottom: 16px;
         }}
         .report-logo-img {{
           display: block;
           width: 170px;
+          max-width: 170px;
           height: auto;
         }}
         .report-title {{
-          font-size: 26px;
-          line-height: 1.25;
+          flex: 1 1 auto;
+          font-size: 22px;
+          line-height: 1.2;
           font-weight: 800;
           color: #111827;
+          word-break: break-word;
         }}
         .report-section-title {{
           font-size: 18px;
@@ -828,9 +854,12 @@ def build_report_artifacts(month_num):
           border: 1px solid #E5E9F0;
           overflow: hidden;
           background: #FFFFFF;
+          box-sizing: border-box;
         }}
         .report-chart {{
           width: 100%;
+          max-width: 100%;
+          overflow: hidden;
         }}
         .hml {{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; align-items:center; }}
         .hml span {{ font-size:11px; font-weight:600; padding:3px 10px; border-radius:20px; }}
@@ -872,7 +901,7 @@ def build_report_artifacts(month_num):
         {logo_block}
         <div class="report-title">Informe de Aplicación del plan de calidad - Corte al {html.escape(cutoff_text)}</div>
       </div>
-      <section class="pdf-section">
+      <section class="pdf-section section-table">
         <div class="report-section-title">Informe General de {html.escape(MESES[month_num])}</div>
         <div class="report-section-sub">Resumen consolidado por proyecto del mes seleccionado.</div>
         {heatmap_legend()}
@@ -900,7 +929,7 @@ def render_pdf_download_button(report_html, chart_specs, filename, button_label=
         {button_label}
       </button>
       <div id="{component_id}-status" style="font-family:Inter, Arial, sans-serif;font-size:11px;color:#9CA3AF;margin-top:6px;min-height:14px;"></div>
-      <div id="{component_id}-host" style="position:absolute;left:-20000px;top:0;width:1180px;background:#FFFFFF;"></div>
+      <div id="{component_id}-host" style="position:absolute;left:-20000px;top:0;width:1030px;background:#FFFFFF;"></div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -940,6 +969,23 @@ def render_pdf_download_button(report_html, chart_specs, filename, button_label=
         }}
       }}
 
+      async function waitForImages(root, timeoutMs) {{
+        const images = Array.from(root.querySelectorAll('img'));
+        if (!images.length) return;
+        await Promise.race([
+          Promise.all(images.map((img) => new Promise((resolve) => {{
+            if (img.complete && img.naturalWidth > 0) {{
+              resolve();
+              return;
+            }}
+            const done = () => resolve();
+            img.addEventListener('load', done, {{ once: true }});
+            img.addEventListener('error', done, {{ once: true }});
+          }}))),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout cargando imágenes del informe')), timeoutMs))
+        ]);
+      }}
+
       function renderCharts() {{
         chartSpecs.forEach((spec) => {{
           const el = document.getElementById(spec.id);
@@ -958,9 +1004,10 @@ def render_pdf_download_button(report_html, chart_specs, filename, button_label=
         try {{
           await waitForLibrary(() => typeof window.echarts !== 'undefined', 15000);
           await waitForLibrary(() => typeof window.html2pdf !== 'undefined', 15000);
+          const reportNode = host.firstElementChild;
+          await waitForImages(reportNode, 15000);
           renderCharts();
           await new Promise(resolve => setTimeout(resolve, 1400));
-          const reportNode = host.firstElementChild;
           await html2pdf().set({{
             margin: [8, 8, 8, 8],
             filename: filename,
