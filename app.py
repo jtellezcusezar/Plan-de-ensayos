@@ -794,8 +794,8 @@ def build_city_combo_chart_config_from_series(city_month_series, cusezar_2026_mo
         if any(value is not None and not pd.isna(value) for value in city_month_series[ciudad])
     ]
     city_palette = [
-        "#7BA7D4", "#6BBF9E", "#E8C17A", "#D98B8B", "#5B8FF9", "#61DDAA",
-        "#65789B", "#F6BD16", "#7262FD", "#78D3F8", "#9661BC", "#F6903D",
+        "#D98B8B", "#F6BD16", "#7BA7D4", "#6BBF9E", "#E8C17A", "#5B8FF9", 
+        "#61DDAA", "#65789B", "#7262FD", "#78D3F8", "#9661BC", "#F6903D",
     ]
 
     has_combo_data = (
