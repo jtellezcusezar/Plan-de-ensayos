@@ -580,19 +580,24 @@ def build_echarts_heatmap_config(rows_data):
             "data": data,
             "label": {
                 "show": True,
-                "formatter": """__JS__function (params) { return params.data[3]; }__JS__""",
-                "fontFamily": "Inter, sans-serif",
-                "fontSize": 10,
-                "fontWeight": 700,
-                "color": """__JS__function (params) {
+                "formatter": """__JS__function (params) {
                     const value = params.data[2];
-                    if (value === -1) return '#C4CAD4';
-                    if (value < 25) return '#8B2B2B';
-                    if (value < 50) return '#A45724';
-                    if (value < 70) return '#A97B12';
-                    if (value < 90) return '#667A1E';
-                    return '#2D6A4F';
+                    const text = params.data[3];
+                    if (value === -1) return '{na|' + text + '}';
+                    if (value < 25) return '{lt25|' + text + '}';
+                    if (value < 50) return '{lt50|' + text + '}';
+                    if (value < 70) return '{lt70|' + text + '}';
+                    if (value < 90) return '{lt90|' + text + '}';
+                    return '{gte90|' + text + '}';
                 }__JS__""",
+                "rich": {
+                    "na": {"color": "#C4CAD4", "fontFamily": "Inter, sans-serif", "fontSize": 10, "fontWeight": 700},
+                    "lt25": {"color": "#8B2B2B", "fontFamily": "Inter, sans-serif", "fontSize": 10, "fontWeight": 700},
+                    "lt50": {"color": "#A45724", "fontFamily": "Inter, sans-serif", "fontSize": 10, "fontWeight": 700},
+                    "lt70": {"color": "#A97B12", "fontFamily": "Inter, sans-serif", "fontSize": 10, "fontWeight": 700},
+                    "lt90": {"color": "#667A1E", "fontFamily": "Inter, sans-serif", "fontSize": 10, "fontWeight": 700},
+                    "gte90": {"color": "#2D6A4F", "fontFamily": "Inter, sans-serif", "fontSize": 10, "fontWeight": 700},
+                },
             },
             "itemStyle": {"borderColor": "#E5E9F0", "borderWidth": 1},
             "emphasis": {"itemStyle": {"shadowBlur": 0, "borderColor": "#CBD5E1", "borderWidth": 1}},
@@ -1867,7 +1872,7 @@ if current_page == "Controles":
             for row in pending_rows
         )
         st.markdown(
-            f'<div style="overflow-x:auto;border-radius:10px;border:1px solid #E5E9F0;">'
+            f'<div style="overflow-x:auto;border-radius:10px;border:1px solid #E5E9F0;max-height:420px;overflow-y:auto;">'
             f'<table class="rt"><thead><tr>'
             f'<th>Proyecto</th>'
             f'<th>Control de torre</th>'
