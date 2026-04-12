@@ -846,8 +846,8 @@ def build_city_combo_chart_config_from_series(city_month_series, cusezar_2026_mo
             "smooth": True,
             "connectNulls": False,
             "symbolSize": 8,
-            "lineStyle": {"width": 3, "color": "#B5545C"},
-            "itemStyle": {"color": "#B5545C"},
+            "lineStyle": {"width": 3, "color": "#FF0000"},
+            "itemStyle": {"color": "#FF0000"},
             "data": sanitize_echarts_series(cusezar_2026_month_series),
         }, {
             "name": "Cusezar 2025",
@@ -855,8 +855,8 @@ def build_city_combo_chart_config_from_series(city_month_series, cusezar_2026_mo
             "smooth": True,
             "connectNulls": False,
             "symbolSize": 7,
-            "lineStyle": {"width": 2.5, "type": "dashed", "color": "#5E8C61"},
-            "itemStyle": {"color": "#5E8C61"},
+            "lineStyle": {"width": 2.5, "type": "dashed", "color": "#FF7070"},
+            "itemStyle": {"color": "#FF7070"},
             "data": sanitize_echarts_series(cusezar_2025_month_series),
         }],
     }
