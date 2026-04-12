@@ -696,11 +696,24 @@ def build_report_artifacts(month_num):
     chart_config = tab0_data["city_chart_config"]
     if chart_config:
         combo_option, combo_height = chart_config
+        report_combo_option = json.loads(json.dumps(combo_option, ensure_ascii=False))
+        for series in report_combo_option.get("series", []):
+            if series.get("name") == "Cusezar 2026":
+                series["label"] = {
+                    "show": True,
+                    "position": "top",
+                    "formatter": "{c}%",
+                    "fontFamily": "Inter, sans-serif",
+                    "fontSize": 10,
+                    "fontWeight": 700,
+                    "color": "#FF0000",
+                }
+                break
         combo_id = f"report-chart-{uuid4().hex}"
         chart_specs.append({
             "id": combo_id,
             "height": combo_height,
-            "option_json": json.dumps(combo_option, ensure_ascii=False),
+            "option_json": json.dumps(report_combo_option, ensure_ascii=False),
         })
         report_sections.append(
             '<section class="pdf-section page-break section-chart">'
