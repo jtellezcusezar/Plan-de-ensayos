@@ -7,6 +7,7 @@ from pathlib import Path
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from io import BytesIO
+import base64
 from openpyxl import load_workbook
 import json
 from uuid import uuid4
@@ -113,7 +114,8 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif!important;}
 section[data-testid="stSidebar"],[data-testid="stSidebar"]{background:#F8FAFC;border-right:1px solid #E5E9F0;}
 section[data-testid="stSidebar"] > div:first-child,[data-testid="stSidebar"] > div:first-child{padding-top:1.25rem;}
 section[data-testid="stSidebar"] [data-testid="stVerticalBlock"],[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{gap:.35rem;}
-.sidebar-logo-wrap{display:flex;justify-content:center;align-items:center;margin:0 0 14px 0;padding:14px 12px;background:#FF0000;border-radius:14px;}
+.sidebar-logo-wrap{display:flex;justify-content:center;align-items:center;width:fit-content;margin:0 auto 14px auto;padding:12px 18px;background:#FF0000;border-radius:18px;}
+.sidebar-logo-img{display:block;width:150px;height:auto;}
 .sidebar-brand{font-size:18px;font-weight:800;color:#111827;line-height:1.2;margin-bottom:4px;text-align:center;}
 .sidebar-sub{font-size:11px;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px;text-align:center;}
 section[data-testid="stSidebar"] .stRadio > label,[data-testid="stSidebar"] .stRadio > label{display:none;}
@@ -447,6 +449,17 @@ def dataframe_to_excel_bytes(df):
         df.to_excel(writer, index=False, sheet_name="Consulta")
     output.seek(0)
     return output.getvalue()
+
+
+def build_sidebar_logo_html(path):
+    if not path.exists():
+        return ""
+    encoded = base64.b64encode(path.read_bytes()).decode("utf-8")
+    return (
+        '<div class="sidebar-logo-wrap">'
+        f'<img src="data:image/png;base64,{encoded}" alt="Cusezar" class="sidebar-logo-img" />'
+        '</div>'
+    )
 
 def get_kpis(df):
     ex   = df[df["EsEjecutado"]]
@@ -1314,10 +1327,9 @@ NAV_OPTIONS = {
 }
 
 with st.sidebar:
-    if SIDEBAR_LOGO_PATH.exists():
-        st.markdown('<div class="sidebar-logo-wrap">', unsafe_allow_html=True)
-        st.image(str(SIDEBAR_LOGO_PATH), width=150)
-        st.markdown('</div>', unsafe_allow_html=True)
+    logo_html = build_sidebar_logo_html(SIDEBAR_LOGO_PATH)
+    if logo_html:
+        st.markdown(logo_html, unsafe_allow_html=True)
     st.markdown('<div class="sidebar-brand">Calidad</div>', unsafe_allow_html=True)
     st.markdown('<div class="sidebar-sub">Panel de navegación</div>', unsafe_allow_html=True)
     current_page = st.radio(
