@@ -846,8 +846,8 @@ def build_city_combo_chart_config_from_series(city_month_series, cusezar_2026_mo
             "smooth": True,
             "connectNulls": False,
             "symbolSize": 8,
-            "lineStyle": {"width": 3, "color": "#FF0000"},
-            "itemStyle": {"color": "#FF0000"},
+            "lineStyle": {"width": 3, "color": "#FF9999"},
+            "itemStyle": {"color": "#FF9999"},
             "data": sanitize_echarts_series(cusezar_2026_month_series),
         }, {
             "name": "Cusezar 2025",
