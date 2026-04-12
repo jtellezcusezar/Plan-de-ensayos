@@ -596,7 +596,7 @@ def build_general_report_table_html(tab0_data, mes_num):
 
     return (
         '<div class="ig-wrap">'
-        '<div class="report-table-shell">'
+        '<div class="report-table-shell report-general-table-shell">'
         f'<table class="ig-table"><thead><tr>{"".join(header_cells)}</tr></thead>'
         f'<tbody>{"".join(body_rows)}</tbody></table></div></div>'
     )
@@ -775,9 +775,13 @@ def build_report_artifacts(month_num):
           font-family: Inter, Arial, sans-serif;
           padding: 18px 18px 20px 18px;
           overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
         }}
         .pdf-section {{
           width: 100%;
+          max-width: 960px;
           box-sizing: border-box;
           margin: 0;
           padding: 0;
@@ -789,20 +793,18 @@ def build_report_artifacts(month_num):
           break-before: page;
           padding-top: 4px;
         }}
-        .pdf-section.section-table .report-table-shell,
-        .pdf-section.section-pending .report-table-shell {{
-          transform: scale(.84);
-          transform-origin: top left;
-          width: 119.1%;
-        }}
         .report-header {{
           display: flex;
           align-items: center;
+          justify-content: center;
           gap: 24px;
           min-height: 96px;
+          width: 100%;
+          max-width: 960px;
           margin-bottom: 8px;
           border-bottom: 1px solid #E5E9F0;
           padding-bottom: 8px;
+          box-sizing: border-box;
         }}
         .report-logo-wrap {{
           display: inline-flex;
@@ -850,18 +852,39 @@ def build_report_artifacts(month_num):
         }}
         .report-table-shell {{
           width: 100%;
+          max-width: 960px;
+          margin: 0 auto;
           border-radius: 10px;
           border: 1px solid #E5E9F0;
           overflow: hidden;
           background: #FFFFFF;
           box-sizing: border-box;
         }}
+        .report-general-table-shell {{
+          max-width: 900px;
+        }}
+        .report-general-table-shell .ig-table {{
+          font-size: 10px;
+        }}
+        .report-general-table-shell .ig-table th {{
+          padding: 6px 5px;
+          font-size: 8px;
+          line-height: 1.1;
+        }}
+        .report-general-table-shell .ig-table td {{
+          padding: 4px 5px;
+          font-size: 9px;
+          line-height: 1.05;
+        }}
+        .report-general-table-shell .ig-table td strong {{
+          font-size: 9px;
+        }}
         .report-chart {{
           width: 100%;
           max-width: 100%;
           overflow: hidden;
         }}
-        .hml {{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; align-items:center; }}
+        .hml {{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; align-items:center; justify-content:center; }}
         .hml span {{ font-size:11px; font-weight:600; padding:3px 10px; border-radius:20px; }}
         .rt {{ width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed; }}
         .rt th {{ background:#B5545C; padding:9px 10px; text-align:left; font-size:10px; font-weight:700; color:#FFF7F7; text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid #9F434B; white-space:normal; line-height:1.2; word-break:break-word; }}
