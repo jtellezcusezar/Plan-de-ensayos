@@ -167,7 +167,7 @@ div[data-testid="stTextInput"]>div>input:focus{border-color:#7BA7D4!important;bo
 .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
 .bc{background:#E4F4EE;color:#3D8B6E;}.bi{background:#FBF3E0;color:#C49A3C;}.bn{background:#F8E8E8;color:#B05B5B;}.bp{background:#EEF3FA;color:#4A7BA8;}
 .rt{width:100%;border-collapse:collapse;font-size:13px;}
-.rt th{background:#B5545C;padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:#FFF7F7;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #9F434B;white-space:nowrap;}
+.rt th{background:#B5545C;padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#FFF7F7;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #9F434B;white-space:nowrap;}
 .rt td{padding:10px 14px;border-bottom:1px solid #F1D9DB;color:#6B7280;}
 .rt td:first-child{background:#F8E8E8;color:#8F3942;font-weight:700;}
 .rt tr:last-child td{border-bottom:none;}.rt tr:hover td{background:#FCF4F5;}
@@ -584,7 +584,15 @@ def build_echarts_heatmap_config(rows_data):
                 "fontFamily": "Inter, sans-serif",
                 "fontSize": 10,
                 "fontWeight": 700,
-                "color": "#374151",
+                "color": """__JS__function (params) {
+                    const value = params.data[2];
+                    if (value === -1) return '#C4CAD4';
+                    if (value < 25) return '#8B2B2B';
+                    if (value < 50) return '#A45724';
+                    if (value < 70) return '#A97B12';
+                    if (value < 90) return '#667A1E';
+                    return '#2D6A4F';
+                }__JS__""",
             },
             "itemStyle": {"borderColor": "#E5E9F0", "borderWidth": 1},
             "emphasis": {"itemStyle": {"shadowBlur": 0, "borderColor": "#CBD5E1", "borderWidth": 1}},
@@ -1716,7 +1724,7 @@ if current_page == "Ensayos":
             ascending=[True, True, True, True, True],
         )
         rows_pending = "".join(
-            f"<tr><td>{r.Proyecto}</td><td>{r.Etapa}</td><td style='color:{pending_text_color(r.Estado)};font-weight:700;'>{r.Mes}</td><td style='color:{pending_text_color(r.Estado)};font-weight:700;'>{r['Ensayo pendiente']}</td><td>{badge(r.Estado)}</td></tr>"
+            f"<tr><td>{r.Proyecto}</td><td>{r.Etapa}</td><td>{r.Mes}</td><td>{r['Ensayo pendiente']}</td><td>{badge(r.Estado)}</td></tr>"
             for _, r in pending_ensayos_df.iterrows()
         )
         st.markdown(
@@ -1745,14 +1753,6 @@ if current_page == "Consulta de Ensayos":
     buscar     = q3.text_input("🔎 Buscar por nombre de ensayo",
                                placeholder="Ej: resistencia, fraguado, granulometría...")
 
-    df4 = filt(filt(filt_mes(filt(filt(filt(df_full,
-        "Proyecto", sel4_proy, "Todos"),
-        "ETAPA", sel4_etapa, "Todas"),
-        "MATERIAL", sel4_mat, "Todos"),
-        sel4_mes),
-        "Estado", sel4_est, "Todos"),
-        "Proyecto", sel4_proy, "Todos")  # already applied but safe
-    # cleaner re-apply
     df4 = df_full.copy()
     if sel4_proy  != "Todos": df4 = df4[df4["Proyecto"] == sel4_proy]
     if sel4_etapa != "Todas": df4 = df4[df4["ETAPA"]    == sel4_etapa]
@@ -1860,9 +1860,9 @@ if current_page == "Controles":
         rows_html = "".join(
             f"<tr>"
             f"<td>{row['Proyecto']}</td>"
-            f"<td style='white-space:normal;line-height:1.45;color:#8B2B2B;font-weight:700;'>{row['Control de torre']}</td>"
-            f"<td style='white-space:normal;line-height:1.45;color:#8B2B2B;font-weight:700;'>{row['Producto terminado de torres']}</td>"
-            f"<td style='white-space:normal;line-height:1.45;color:#8B2B2B;font-weight:700;'>{row['Control zonas comunes']}</td>"
+            f"<td style='white-space:normal;line-height:1.45;'>{row['Control de torre']}</td>"
+            f"<td style='white-space:normal;line-height:1.45;'>{row['Producto terminado de torres']}</td>"
+            f"<td style='white-space:normal;line-height:1.45;'>{row['Control zonas comunes']}</td>"
             f"</tr>"
             for row in pending_rows
         )
