@@ -791,18 +791,18 @@ def build_report_artifacts(month_num):
         }}
         .pdf-section.section-table .report-table-shell,
         .pdf-section.section-pending .report-table-shell {{
-          transform: scale(.92);
+          transform: scale(.84);
           transform-origin: top left;
-          width: 108.7%;
+          width: 119.1%;
         }}
         .report-header {{
           display: flex;
           align-items: center;
           gap: 24px;
-          min-height: 120px;
-          margin-bottom: 12px;
+          min-height: 96px;
+          margin-bottom: 8px;
           border-bottom: 1px solid #E5E9F0;
-          padding-bottom: 12px;
+          padding-bottom: 8px;
         }}
         .report-logo-wrap {{
           display: inline-flex;
@@ -821,7 +821,7 @@ def build_report_artifacts(month_num):
         }}
         .report-title {{
           flex: 1 1 auto;
-          font-size: 22px;
+          font-size: 20px;
           line-height: 1.2;
           font-weight: 800;
           color: #111827;
@@ -902,8 +902,6 @@ def build_report_artifacts(month_num):
         <div class="report-title">Informe de Aplicación del plan de calidad - Corte al {html.escape(cutoff_text)}</div>
       </div>
       <section class="pdf-section section-table">
-        <div class="report-section-title">Informe General de {html.escape(MESES[month_num])}</div>
-        <div class="report-section-sub">Resumen consolidado por proyecto del mes seleccionado.</div>
         {heatmap_legend()}
         {general_table_html}
       </section>
