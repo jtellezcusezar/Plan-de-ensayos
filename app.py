@@ -1344,7 +1344,7 @@ if current_page == "Informe General":
 
     mes0_num = next((k for k, v in MESES.items() if v == sel0_mes), None)
 
-    st.markdown(section_header("Informe General", f"Resumen consolidado por proyecto para {sel0_mes}"), unsafe_allow_html=True)
+    st.markdown(section_header("Informe General de {sel0_mes}", f"Resumen consolidado por proyecto"), unsafe_allow_html=True)
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
     st.markdown(heatmap_legend(), unsafe_allow_html=True)
     st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
@@ -1461,7 +1461,7 @@ if current_page == "Informe General":
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
-    st.markdown(section_header("Evolución mensual por ciudad", "Barras por ciudad y línea de Cusezar con el promedio mensual de todas las ciudades con dato"), unsafe_allow_html=True)
+    st.markdown(section_header("Cumplimiento plan de calidad 2026", "Barras por ciudad y línea de Cusezar con el promedio mensual de todas las ciudades con dato"), unsafe_allow_html=True)
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
 
     chart_config = tab0_data["city_chart_config"]
@@ -1634,7 +1634,7 @@ if current_page == "Ensayos":
         st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Heatmap ──
-    st.markdown(section_header('Heatmap de Cumplimiento — Proyecto × Mes', 'Tasa = promedio de valores ejecutados (0, 0.5, 1). "Plan." = sin datos ejecutados ese mes.'), unsafe_allow_html=True)
+    st.markdown(section_header('Cumplimiento de ejecución de control de ensayos'), unsafe_allow_html=True)
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
     st.markdown(heatmap_legend(), unsafe_allow_html=True)
     rows_hm = build_tab2_heatmap_rows_from_summary(tab1_summary)
@@ -1643,7 +1643,7 @@ if current_page == "Ensayos":
     st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Línea temporal ──
-    st.markdown(section_header("Ensayos por Mes — 2026", "Líneas sólidas = ejecutados por estado · Punteada = total planeado del mes · Curva suavizada"), unsafe_allow_html=True)
+    st.markdown(section_header("Ensayos por Mes — 2026", "Líneas sólidas = ejecutados por estado · Punteada = total planeado del mes"), unsafe_allow_html=True)
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
     mp = (df1.groupby("Mes").size()
             .reindex(range(1,13), fill_value=0).reset_index())
