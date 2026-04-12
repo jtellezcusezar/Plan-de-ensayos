@@ -681,6 +681,7 @@ def build_report_artifacts(month_num):
     tab0_data = build_tab0_precomputed_data(EXCEL_SIGNATURE)
     report_year = datetime.now(ZoneInfo("America/Bogota")).year
     cutoff_text = build_report_cutoff_text(month_num, report_year)
+    report_heatmap_height = 500
     logo_uri = get_image_data_uri(SIDEBAR_LOGO_PATH)
     logo_block = (
         '<div class="report-logo-wrap">'
@@ -704,25 +705,24 @@ def build_report_artifacts(month_num):
         report_sections.append(
             '<section class="pdf-section page-break section-chart">'
             '<div class="report-section-title">Cumplimiento plan de calidad 2026</div>'
-            '<div class="report-section-sub">Barras por ciudad y línea de Cusezar con el promedio mensual de todas las ciudades con dato</div>'
             f'<div id="{combo_id}" class="report-chart" style="height:{combo_height}px;"></div>'
             '</section>'
         )
 
     ensayos_rows = build_tab2_heatmap_rows_from_summary(build_tab2_precomputed_data(EXCEL_SIGNATURE))
     if rows_have_visible_values(ensayos_rows):
-        ensayos_option, ensayos_height = build_echarts_heatmap_config(ensayos_rows)
+        ensayos_option, _ = build_echarts_heatmap_config(ensayos_rows)
         ensayos_id = f"report-chart-{uuid4().hex}"
         chart_specs.append({
             "id": ensayos_id,
-            "height": ensayos_height,
+            "height": report_heatmap_height,
             "option_json": json.dumps(ensayos_option, ensure_ascii=False),
         })
         report_sections.append(
             '<section class="pdf-section page-break section-heatmap">'
             '<div class="report-section-title">Cumplimiento de ejecución de control de ensayos</div>'
             f'{heatmap_legend()}'
-            f'<div id="{ensayos_id}" class="report-chart" style="height:{ensayos_height}px;"></div>'
+            f'<div id="{ensayos_id}" class="report-chart" style="height:{report_heatmap_height}px;"></div>'
             '</section>'
         )
 
@@ -730,19 +730,18 @@ def build_report_artifacts(month_num):
         area_rows = build_heatmap_rows(df_controles, df_full, area)
         if not rows_have_visible_values(area_rows):
             continue
-        area_option, area_height = build_echarts_heatmap_config(area_rows)
+        area_option, _ = build_echarts_heatmap_config(area_rows)
         area_id = f"report-chart-{uuid4().hex}"
         chart_specs.append({
             "id": area_id,
-            "height": area_height,
+            "height": report_heatmap_height,
             "option_json": json.dumps(area_option, ensure_ascii=False),
         })
         report_sections.append(
             '<section class="pdf-section page-break section-heatmap">'
             f'<div class="report-section-title">{html.escape(control_area_title(area))}</div>'
-            '<div class="report-section-sub">Promedio mensual con 12 meses fijos. Los registros sin valor no se incluyen en el cálculo.</div>'
             f'{heatmap_legend()}'
-            f'<div id="{area_id}" class="report-chart" style="height:{area_height}px;"></div>'
+            f'<div id="{area_id}" class="report-chart" style="height:{report_heatmap_height}px;"></div>'
             '</section>'
         )
 
@@ -750,7 +749,6 @@ def build_report_artifacts(month_num):
     pending_section = (
         '<section class="pdf-section page-break section-pending">'
         '<div class="report-section-title">Controles pendientes</div>'
-        '<div class="report-section-sub">Pendientes del mes seleccionado, con la columna adicional de ensayos pendientes para este informe.</div>'
         f'{pending_table_html}'
         '</section>'
     ) if pending_table_html else (
@@ -785,13 +783,25 @@ def build_report_artifacts(month_num):
           box-sizing: border-box;
           margin: 0;
           padding: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
           break-inside: avoid;
           page-break-inside: avoid;
         }}
         .pdf-section.page-break {{
           page-break-before: always;
           break-before: page;
-          padding-top: 4px;
+          min-height: 630px;
+          padding-top: 0;
+        }}
+        .pdf-section.section-table {{
+          min-height: 430px;
+        }}
+        .pdf-section.section-pending {{
+          justify-content: flex-start;
+          min-height: 630px;
         }}
         .report-header {{
           display: flex;
@@ -830,11 +840,12 @@ def build_report_artifacts(month_num):
           word-break: break-word;
         }}
         .report-section-title {{
+          align-self: stretch;
           font-size: 18px;
           line-height: 1.2;
           font-weight: 800;
           color: #111827;
-          margin-bottom: 4px;
+          margin-bottom: 10px;
         }}
         .report-section-sub {{
           font-size: 12px;
@@ -864,20 +875,20 @@ def build_report_artifacts(month_num):
           max-width: 900px;
         }}
         .report-general-table-shell .ig-table {{
-          font-size: 10px;
+          font-size: 11px;
         }}
         .report-general-table-shell .ig-table th {{
-          padding: 6px 5px;
+          padding: 7px 5px;
           font-size: 8px;
           line-height: 1.1;
         }}
         .report-general-table-shell .ig-table td {{
-          padding: 4px 5px;
-          font-size: 9px;
-          line-height: 1.05;
+          padding: 6px 5px;
+          font-size: 10px;
+          line-height: 1.12;
         }}
         .report-general-table-shell .ig-table td strong {{
-          font-size: 9px;
+          font-size: 10px;
         }}
         .report-chart {{
           width: 100%;
