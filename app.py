@@ -2477,7 +2477,7 @@ if current_page == "Controles":
         st.info("ℹ️ No se encontraron controles con los filtros aplicados.")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown(section_header("Controles pendientes", "Controles con valor 0 o 0,5 agrupados por proyecto"), unsafe_allow_html=True)
+    st.markdown(section_header("Controles pendientes", "Número entre parentesis (n), cantidad de controles acumulados"), unsafe_allow_html=True)
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
 
     pend_col, _ = st.columns([1.2, 4.8])
