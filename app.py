@@ -15,7 +15,7 @@ import json
 from uuid import uuid4
 
 st.set_page_config(
-    page_title="Plan de Ensayos 2026", page_icon="🏗️",
+    page_title="Calidad - Cusezar", page_icon="🏗️",
     layout="wide", initial_sidebar_state="expanded",
 )
 
