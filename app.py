@@ -679,29 +679,34 @@ def build_report_pending_table_html(df_ensayos, df_ctrl, month_num):
         return ""
 
     empty_html = '<span style="color:#9CA3AF;">—</span>'
-    rows_html = []
+    cards_html = []
     for proyecto in all_projects:
         ctrl_row = ctrl_map.get(proyecto, {})
-        rows_html.append(
-            "<tr>"
-            f"<td class='report-project-cell'><div class='report-project-text'>{html.escape(str(proyecto))}</div></td>"
-            f"<td><div class='report-pending-text'>{ctrl_row.get('Control de torre', empty_html)}</div></td>"
-            f"<td><div class='report-pending-text'>{ctrl_row.get('Producto terminado de torres', empty_html)}</div></td>"
-            f"<td><div class='report-pending-text'>{ctrl_row.get('Control zonas comunes', empty_html)}</div></td>"
-            f"<td><div class='report-pending-text'>{ens_map.get(proyecto, empty_html)}</div></td>"
-            "</tr>"
+        cards_html.append(
+            '<article class="report-pending-card">'
+            f'<div class="report-pending-project">{html.escape(str(proyecto))}</div>'
+            '<div class="report-pending-card-grid">'
+            '<section class="report-pending-item">'
+            '<div class="report-pending-label">Control de torre</div>'
+            f'<div class="report-pending-value">{ctrl_row.get("Control de torre", empty_html)}</div>'
+            '</section>'
+            '<section class="report-pending-item">'
+            '<div class="report-pending-label">Producto terminado de torres</div>'
+            f'<div class="report-pending-value">{ctrl_row.get("Producto terminado de torres", empty_html)}</div>'
+            '</section>'
+            '<section class="report-pending-item">'
+            '<div class="report-pending-label">Control zonas comunes</div>'
+            f'<div class="report-pending-value">{ctrl_row.get("Control zonas comunes", empty_html)}</div>'
+            '</section>'
+            '<section class="report-pending-item">'
+            '<div class="report-pending-label">Ensayos pendientes</div>'
+            f'<div class="report-pending-value">{ens_map.get(proyecto, empty_html)}</div>'
+            '</section>'
+            '</div>'
+            '</article>'
         )
 
-    return (
-        '<div class="report-table-shell">'
-        '<table class="rt"><thead><tr>'
-        '<th>Proyecto</th>'
-        '<th>Control de torre</th>'
-        '<th>Producto terminado de torres</th>'
-        '<th>Control zonas comunes</th>'
-        '<th>Ensayos pendientes</th>'
-        f'</tr></thead><tbody>{"".join(rows_html)}</tbody></table></div>'
-    )
+    return f'<div class="report-pending-list">{"".join(cards_html)}</div>'
 
 
 def build_report_artifacts(month_num):
@@ -915,6 +920,60 @@ def build_report_artifacts(month_num):
         }}
         .section-pending .report-table-shell {{
           overflow: visible;
+        }}
+        .report-pending-list {{
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }}
+        .report-pending-card {{
+          width: 100%;
+          border: 1px solid #E5E9F0;
+          border-radius: 12px;
+          overflow: hidden;
+          background: #FFFFFF;
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }}
+        .report-pending-project {{
+          padding: 8px 10px;
+          background: #F8E8E8;
+          color: #8F3942;
+          font-size: 13px;
+          font-weight: 800;
+          line-height: 1.2;
+        }}
+        .report-pending-card-grid {{
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0;
+        }}
+        .report-pending-item {{
+          padding: 8px 10px;
+          border-top: 1px solid #F1D9DB;
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }}
+        .report-pending-item:nth-child(odd) {{
+          border-right: 1px solid #F1D9DB;
+        }}
+        .report-pending-label {{
+          margin-bottom: 5px;
+          color: #B5545C;
+          font-size: 9px;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: .05em;
+          line-height: 1.2;
+        }}
+        .report-pending-value {{
+          color: #6B7280;
+          font-size: 10.5px;
+          line-height: 1.24;
+          white-space: normal;
+          word-break: normal;
+          overflow-wrap: anywhere;
         }}
         .report-general-table-shell {{
           max-width: 900px;
