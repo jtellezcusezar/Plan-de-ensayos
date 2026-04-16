@@ -115,11 +115,14 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif!important;}
 .block-container{padding-top:3.25rem!important;max-width:100%!important;padding-left:2rem!important;padding-right:2rem!important;}
 section[data-testid="stSidebar"],[data-testid="stSidebar"]{background:#F8FAFC;border-right:1px solid #E5E9F0;}
 section[data-testid="stSidebar"] > div:first-child,[data-testid="stSidebar"] > div:first-child{padding-top:1.25rem;}
+section[data-testid="stSidebar"] > div:first-child,[data-testid="stSidebar"] > div:first-child{display:flex;flex-direction:column;height:100%;}
 section[data-testid="stSidebar"] [data-testid="stVerticalBlock"],[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{gap:.35rem;}
 .sidebar-logo-wrap{display:flex;justify-content:center;align-items:center;width:fit-content;margin:0 auto 14px auto;padding:12px 18px;background:#FF0000;border-radius:18px;}
 .sidebar-logo-img{display:block;width:150px;height:auto;}
 .sidebar-brand{font-size:18px;font-weight:800;color:#111827;line-height:1.2;margin-bottom:4px;text-align:center;}
 .sidebar-sub{font-size:11px;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px;text-align:center;}
+.sidebar-footer{margin-top:auto;padding-top:16px;font-size:11px;color:#6B7280;text-align:center;line-height:1.5;}
+.sidebar-footer strong{display:block;font-size:10px;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
 section[data-testid="stSidebar"] .stRadio > label,[data-testid="stSidebar"] .stRadio > label{display:none;}
 section[data-testid="stSidebar"] .stRadio [role="radiogroup"],[data-testid="stSidebar"] .stRadio [role="radiogroup"]{gap:8px;}
 section[data-testid="stSidebar"] .stRadio [role="radio"],[data-testid="stSidebar"] .stRadio [role="radio"]{background:#FFFFFF;border:1px solid #E5E9F0;border-radius:12px;padding:10px 12px;color:#475569;font-size:13px;font-weight:600;box-shadow:0 1px 3px rgba(15,23,42,.04);}
@@ -216,6 +219,16 @@ SIDEBAR_LOGO_PATH = Path("cusezar.png")
 def get_excel_signature(path):
     stat = path.stat()
     return stat.st_mtime_ns, stat.st_size
+
+
+def format_spanish_date(dt_value):
+    return f"{dt_value.day} de {MESES[dt_value.month]} del {dt_value.year}"
+
+
+def get_excel_last_update_text(path):
+    stat = path.stat()
+    updated_at = datetime.fromtimestamp(stat.st_mtime, ZoneInfo("America/Bogota"))
+    return format_spanish_date(updated_at)
 
 
 def read_excel_table(path, table_name):
@@ -357,6 +370,7 @@ def load_data(excel_signature):
 
 
 EXCEL_SIGNATURE = get_excel_signature(EXCEL_PATH)
+EXCEL_LAST_UPDATE_TEXT = get_excel_last_update_text(EXCEL_PATH)
 df_full, df_controles, df_2025 = load_data(EXCEL_SIGNATURE)
 meses_con_datos = sorted(df_full[df_full["EsEjecutado"]]["Mes"].unique().tolist())
 mes_label = " – ".join([MESES[meses_con_datos[0]], MESES[meses_con_datos[-1]]]) if len(meses_con_datos) > 1 else MESES[meses_con_datos[0]]
@@ -1123,7 +1137,7 @@ HEATMAP_RANGE_COLORS = {
 }
 
 
-def build_echarts_heatmap_config(rows_data):
+def build_echarts_heatmap_config(rows_data, show_tooltip=True):
     month_labels = [MESES[m][:3] for m in range(1, 13)] + ["Prom."]
     col_values = [[] for _ in range(12)]
     matrix_rows = []
@@ -1166,6 +1180,7 @@ def build_echarts_heatmap_config(rows_data):
     option = {
         "textStyle": {"fontFamily": "Inter, sans-serif"},
         "tooltip": {
+            "show": show_tooltip,
             "position": "top",
             "formatter": """__JS__function (params) {
                 const raw = params.data;
@@ -1802,7 +1817,8 @@ def get_tab5_view_data(excel_signature, ciudad, proyecto, area, pending_month_ke
         if "Proyecto" in df_ensayos.columns:
             df_ensayos = df_ensayos[df_ensayos["Proyecto"] == proyecto]
 
-    rows5 = build_heatmap_rows(df_ctrl, df_ensayos, area)
+    visible_until_month = MESES_VENCIDOS[-1] if MESES_VENCIDOS else 0
+    rows5 = build_heatmap_rows(df_ctrl, df_ensayos, area, visible_until_month=visible_until_month)
 
     df_pending = df_ctrl if pending_month_key == "Todos" else df_ctrl[df_ctrl["Mes"] == pending_month_key]
     proyectos_tabla = sorted(
@@ -1819,9 +1835,40 @@ def get_tab5_view_data(excel_signature, ciudad, proyecto, area, pending_month_ke
     return rows5, pending_rows
 
 
+@st.cache_data
+def get_tab5_available_areas(excel_signature, ciudad, proyecto):
+    df_ensayos, df_ctrl, _ = load_data(excel_signature)
+
+    if ciudad != "Todas":
+        if "Ciudad" in df_ctrl.columns:
+            df_ctrl = df_ctrl[df_ctrl["Ciudad"] == ciudad]
+        if "Ciudad" in df_ensayos.columns:
+            df_ensayos = df_ensayos[df_ensayos["Ciudad"] == ciudad]
+
+    if proyecto != "Todos":
+        if "Proyecto" in df_ctrl.columns:
+            df_ctrl = df_ctrl[df_ctrl["Proyecto"] == proyecto]
+        if "Proyecto" in df_ensayos.columns:
+            df_ensayos = df_ensayos[df_ensayos["Proyecto"] == proyecto]
+
+    visible_until_month = MESES_VENCIDOS[-1] if MESES_VENCIDOS else 0
+    return [
+        area for area in CONTROL_AREA_OPTIONS
+        if build_heatmap_rows(df_ctrl, df_ensayos, area, visible_until_month=visible_until_month)
+    ]
+
+
 def average_values(values):
     valid_values = [float(v) for v in values if v is not None and not pd.isna(v)]
     return round(sum(valid_values) / len(valid_values), 1) if valid_values else None
+
+
+def row_has_data_until_month(values, month_limit):
+    if month_limit is None:
+        return any(value is not None for value in values)
+    if month_limit <= 0:
+        return False
+    return any(value is not None for value in values[:month_limit])
 
 
 def percent_cell_html(value):
@@ -1838,7 +1885,7 @@ def percent_cell_html(value):
     color = text_colors.get(cls, "#374151")
     return f'<td class="{cls}" style="color:{color};"><strong>{float(value):.0f}%</strong></td>'
 
-def build_heatmap_rows(df_ctrl, df_ens, area):
+def build_heatmap_rows(df_ctrl, df_ens, area, visible_until_month=None):
     ctrl_required = {"Proyecto", "Area", "Etapa", "Control", "Mes", "Valor_num"}
     ens_required = {"Proyecto", "ETAPA", "MATERIAL", "ENSAYO", "Mes", "Cantidad_num"}
 
@@ -1931,7 +1978,8 @@ def build_heatmap_rows(df_ctrl, df_ens, area):
                 t = round(vals.mean() * 100, 1)
                 values.append(t)
                 titles.append(f"Promedio de {len(vals)} valores")
-        rows.append({"label": proyecto, "values": values, "titles": titles})
+        if row_has_data_until_month(values, visible_until_month):
+            rows.append({"label": proyecto, "values": values, "titles": titles})
 
     return rows
 
@@ -1955,10 +2003,9 @@ with st.sidebar:
         label_visibility="collapsed",
     )
     st.markdown(
-        f'<div class="sidebar-sub" style="margin-top:12px;">{df_full["Proyecto"].nunique()} proyectos · {len(df_full):,} ensayos</div>',
+        f'<div class="sidebar-footer"><strong>Ultima actualización</strong>{EXCEL_LAST_UPDATE_TEXT}</div>',
         unsafe_allow_html=True
     )
-    st.caption(f"Datos hasta: {mes_label}")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 0
@@ -2445,25 +2492,36 @@ if current_page == "Controles":
     c5a, c5b, c5c = st.columns(3)
     sel5_ciud = c5a.selectbox("Ciudad", ALL_CIUD, key="t5c")
     sel5_proy = c5b.selectbox("Proyecto", ALL_PC, key="t5p")
-    sel5_area = c5c.selectbox("Control", CONTROL_AREA_OPTIONS, index=0, key="t5a")
+    available_control_areas = get_tab5_available_areas(EXCEL_SIGNATURE, sel5_ciud, sel5_proy)
+    area_options = available_control_areas if available_control_areas else ["Sin datos"]
+    current_area_value = st.session_state.get("t5a")
+    default_area = current_area_value if current_area_value in area_options else area_options[0]
+    sel5_area = c5c.selectbox(
+        "Control",
+        area_options,
+        index=area_options.index(default_area),
+        key="t5a",
+        disabled=not available_control_areas,
+    )
     sel5_pend_mes = "Todos"
     pending_month_key = "Todos"
 
     tab5_error = None
     rows5 = []
     pending_rows = []
-    try:
-        rows5, pending_rows = get_tab5_view_data(
-            EXCEL_SIGNATURE,
-            sel5_ciud,
-            sel5_proy,
-            sel5_area,
-            pending_month_key,
-        )
-    except Exception as exc:
-        tab5_error = str(exc)
+    if available_control_areas:
+        try:
+            rows5, pending_rows = get_tab5_view_data(
+                EXCEL_SIGNATURE,
+                sel5_ciud,
+                sel5_proy,
+                sel5_area,
+                pending_month_key,
+            )
+        except Exception as exc:
+            tab5_error = str(exc)
 
-    title5 = control_area_title(sel5_area)
+    title5 = "Controles" if sel5_area == "Sin datos" else control_area_title(sel5_area)
     st.markdown(section_header(title5, "Promedio mensual con 12 meses fijos. Los registros sin valor no se incluyen en el cálculo."), unsafe_allow_html=True)
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
     st.markdown(heatmap_legend(), unsafe_allow_html=True)
@@ -2471,8 +2529,10 @@ if current_page == "Controles":
     if tab5_error:
         st.warning("No fue posible construir el heatmap de controles con la estructura actual del Excel.")
     elif rows5:
-        heatmap5_option, heatmap5_height = build_echarts_heatmap_config(rows5)
+        heatmap5_option, heatmap5_height = build_echarts_heatmap_config(rows5, show_tooltip=False)
         render_echarts(heatmap5_option, height=heatmap5_height)
+    elif not available_control_areas:
+        st.info("ℹ️ No hay controles con información disponible para los filtros y meses vencidos.")
     else:
         st.info("ℹ️ No se encontraron controles con los filtros aplicados.")
     st.markdown('</div>', unsafe_allow_html=True)
@@ -2484,17 +2544,20 @@ if current_page == "Controles":
     with pend_col:
         sel5_pend_mes = st.selectbox("Mes", ALL_M, key="t5_pending_mes")
     pending_month_key = "Todos" if sel5_pend_mes == "Todos" else next((k for k, v in MESES.items() if v == sel5_pend_mes), "Todos")
-    try:
-        _, pending_rows = get_tab5_view_data(
-            EXCEL_SIGNATURE,
-            sel5_ciud,
-            sel5_proy,
-            sel5_area,
-            pending_month_key,
-        )
-        tab5_error = None
-    except Exception as exc:
-        tab5_error = str(exc)
+    if available_control_areas:
+        try:
+            _, pending_rows = get_tab5_view_data(
+                EXCEL_SIGNATURE,
+                sel5_ciud,
+                sel5_proy,
+                sel5_area,
+                pending_month_key,
+            )
+            tab5_error = None
+        except Exception as exc:
+            tab5_error = str(exc)
+            pending_rows = []
+    else:
         pending_rows = []
 
     if tab5_error:
