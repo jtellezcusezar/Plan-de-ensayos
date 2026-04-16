@@ -115,13 +115,13 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif!important;}
 .block-container{padding-top:3.25rem!important;max-width:100%!important;padding-left:2rem!important;padding-right:2rem!important;}
 section[data-testid="stSidebar"],[data-testid="stSidebar"]{background:#F8FAFC;border-right:1px solid #E5E9F0;}
 section[data-testid="stSidebar"] > div:first-child,[data-testid="stSidebar"] > div:first-child{padding-top:1.25rem;}
-section[data-testid="stSidebar"] > div:first-child,[data-testid="stSidebar"] > div:first-child{display:flex;flex-direction:column;height:100%;}
-section[data-testid="stSidebar"] [data-testid="stVerticalBlock"],[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{display:flex;flex-direction:column;gap:.35rem;height:100%;}
+section[data-testid="stSidebar"] > div:first-child,[data-testid="stSidebar"] > div:first-child{display:flex;flex-direction:column;min-height:100vh;}
+section[data-testid="stSidebar"] [data-testid="stVerticalBlock"],[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{display:flex;flex-direction:column;gap:.35rem;min-height:100%;}
 .sidebar-logo-wrap{display:flex;justify-content:center;align-items:center;width:fit-content;margin:0 auto 14px auto;padding:12px 18px;background:#FF0000;border-radius:18px;}
 .sidebar-logo-img{display:block;width:150px;height:auto;}
 .sidebar-brand{font-size:18px;font-weight:800;color:#111827;line-height:1.2;margin-bottom:4px;text-align:center;}
 .sidebar-sub{font-size:11px;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px;text-align:center;}
-.sidebar-footer{margin-top:auto;padding:14px 12px;background:#EEF3FA;border:1px solid #C8DCF0;border-radius:14px;font-size:12px;color:#4A5565;text-align:center;line-height:1.55;box-shadow:0 4px 14px rgba(74,123,168,.08);}
+.sidebar-footer{position:sticky;bottom:12px;margin-top:auto;padding:14px 12px;background:#EEF3FA;border:1px solid #C8DCF0;border-radius:14px;font-size:12px;color:#4A5565;text-align:center;line-height:1.55;box-shadow:0 4px 14px rgba(74,123,168,.08);}
 .sidebar-footer strong{display:block;font-size:10px;color:#4A7BA8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
 .sidebar-footer .sidebar-update-date{display:block;font-size:13px;font-weight:700;color:#1F2937;}
 section[data-testid="stSidebar"] .stRadio > label,[data-testid="stSidebar"] .stRadio > label{display:none;}
