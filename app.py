@@ -1871,6 +1871,26 @@ def get_tab5_available_areas(excel_signature, ciudad, proyecto):
     ]
 
 
+@st.cache_data
+def get_tab5_available_projects(excel_signature, ciudad):
+    df_ensayos, df_ctrl, _ = load_data(excel_signature)
+
+    if ciudad != "Todas":
+        if "Ciudad" in df_ctrl.columns:
+            df_ctrl = df_ctrl[df_ctrl["Ciudad"] == ciudad]
+        if "Ciudad" in df_ensayos.columns:
+            df_ensayos = df_ensayos[df_ensayos["Ciudad"] == ciudad]
+
+    visible_until_month = MESES_VENCIDOS[-1] if MESES_VENCIDOS else 0
+    available_projects = set()
+
+    for area in CONTROL_AREA_OPTIONS:
+        rows = build_heatmap_rows(df_ctrl, df_ensayos, area, visible_until_month=visible_until_month)
+        available_projects.update(row["label"] for row in rows)
+
+    return ["Todos"] + sorted(available_projects)
+
+
 def average_values(values):
     valid_values = [float(v) for v in values if v is not None and not pd.isna(v)]
     return round(sum(valid_values) / len(valid_values), 1) if valid_values else None
@@ -2504,7 +2524,15 @@ if current_page == "Controles":
 
     c5a, c5b, c5c = st.columns(3)
     sel5_ciud = c5a.selectbox("Ciudad", ALL_CIUD, key="t5c")
-    sel5_proy = c5b.selectbox("Proyecto", ALL_PC, key="t5p")
+    available_projects = get_tab5_available_projects(EXCEL_SIGNATURE, sel5_ciud)
+    current_project_value = st.session_state.get("t5p")
+    default_project = current_project_value if current_project_value in available_projects else "Todos"
+    sel5_proy = c5b.selectbox(
+        "Proyecto",
+        available_projects,
+        index=available_projects.index(default_project),
+        key="t5p",
+    )
     available_control_areas = get_tab5_available_areas(EXCEL_SIGNATURE, sel5_ciud, sel5_proy)
     area_options = available_control_areas if available_control_areas else ["Sin datos"]
     current_area_value = st.session_state.get("t5a")
