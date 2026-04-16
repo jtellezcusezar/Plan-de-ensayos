@@ -684,7 +684,7 @@ def build_report_pending_table_html(df_ensayos, df_ctrl, month_num):
         ctrl_row = ctrl_map.get(proyecto, {})
         rows_html.append(
             "<tr>"
-            f"<td>{html.escape(str(proyecto))}</td>"
+            f"<td class='report-project-cell'><div class='report-project-text'>{html.escape(str(proyecto))}</div></td>"
             f"<td style='white-space:normal;line-height:1.45;'>{ctrl_row.get('Control de torre', empty_html)}</td>"
             f"<td style='white-space:normal;line-height:1.45;'>{ctrl_row.get('Producto terminado de torres', empty_html)}</td>"
             f"<td style='white-space:normal;line-height:1.45;'>{ctrl_row.get('Control zonas comunes', empty_html)}</td>"
@@ -960,6 +960,29 @@ def build_report_artifacts(month_num):
         .section-pending .rt th {{
           break-inside: auto;
           page-break-inside: auto;
+        }}
+        .section-pending .rt th:first-child,
+        .section-pending .rt td:first-child {{
+          width: 150px;
+          min-width: 150px;
+          padding: 0;
+          vertical-align: middle;
+        }}
+        .section-pending .rt .report-project-cell {{
+          background:#F8E8E8;
+        }}
+        .section-pending .rt .report-project-text {{
+          display:block;
+          width:100%;
+          box-sizing:border-box;
+          padding:9px 10px;
+          white-space: normal;
+          word-break: normal;
+          overflow-wrap: break-word;
+          line-height: 1.25;
+          font-size: 11px;
+          font-weight: 700;
+          color:#8F3942;
         }}
         .rt th {{ background:#B5545C; padding:9px 10px; text-align:left; font-size:10px; font-weight:700; color:#FFF7F7; text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid #9F434B; white-space:normal; line-height:1.2; word-break:break-word; }}
         .rt td {{ padding:9px 10px; border-bottom:1px solid #F1D9DB; color:#6B7280; line-height:1.35; word-break:break-word; vertical-align:top; }}
