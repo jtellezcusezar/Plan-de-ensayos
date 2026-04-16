@@ -840,8 +840,10 @@ def build_report_artifacts(month_num):
           min-height: 430px;
         }}
         .pdf-section.section-pending {{
-          justify-content: flex-start;
-          min-height: 630px;
+          display: block;
+          min-height: auto;
+          break-inside: auto;
+          page-break-inside: auto;
         }}
         .report-header {{
           display: flex;
@@ -911,6 +913,9 @@ def build_report_artifacts(month_num):
           background: #FFFFFF;
           box-sizing: border-box;
         }}
+        .section-pending .report-table-shell {{
+          overflow: visible;
+        }}
         .report-general-table-shell {{
           max-width: 900px;
         }}
@@ -938,6 +943,19 @@ def build_report_artifacts(month_num):
         .hml {{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; align-items:center; justify-content:center; }}
         .hml span {{ font-size:11px; font-weight:600; padding:3px 10px; border-radius:20px; }}
         .rt {{ width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed; }}
+        .section-pending .rt {{
+          table-layout: auto;
+        }}
+        .section-pending .rt thead {{
+          display: table-header-group;
+        }}
+        .section-pending .rt tbody {{
+          display: table-row-group;
+        }}
+        .section-pending .rt tr {{
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }}
         .rt th {{ background:#B5545C; padding:9px 10px; text-align:left; font-size:10px; font-weight:700; color:#FFF7F7; text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid #9F434B; white-space:normal; line-height:1.2; word-break:break-word; }}
         .rt td {{ padding:9px 10px; border-bottom:1px solid #F1D9DB; color:#6B7280; line-height:1.35; word-break:break-word; vertical-align:top; }}
         .rt td:first-child {{ background:#F8E8E8; color:#8F3942; font-weight:700; }}
