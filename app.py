@@ -121,8 +121,9 @@ section[data-testid="stSidebar"] [data-testid="stVerticalBlock"],[data-testid="s
 .sidebar-logo-img{display:block;width:150px;height:auto;}
 .sidebar-brand{font-size:18px;font-weight:800;color:#111827;line-height:1.2;margin-bottom:4px;text-align:center;}
 .sidebar-sub{font-size:11px;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px;text-align:center;}
-.sidebar-footer{margin-top:auto;padding-top:16px;font-size:11px;color:#6B7280;text-align:center;line-height:1.5;}
-.sidebar-footer strong{display:block;font-size:10px;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
+.sidebar-footer{margin-top:auto;padding:14px 12px;background:#EEF3FA;border:1px solid #C8DCF0;border-radius:14px;font-size:12px;color:#4A5565;text-align:center;line-height:1.55;box-shadow:0 4px 14px rgba(74,123,168,.08);}
+.sidebar-footer strong{display:block;font-size:10px;color:#4A7BA8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+.sidebar-footer .sidebar-update-date{display:block;font-size:13px;font-weight:700;color:#1F2937;}
 section[data-testid="stSidebar"] .stRadio > label,[data-testid="stSidebar"] .stRadio > label{display:none;}
 section[data-testid="stSidebar"] .stRadio [role="radiogroup"],[data-testid="stSidebar"] .stRadio [role="radiogroup"]{gap:8px;}
 section[data-testid="stSidebar"] .stRadio [role="radio"],[data-testid="stSidebar"] .stRadio [role="radio"]{background:#FFFFFF;border:1px solid #E5E9F0;border-radius:12px;padding:10px 12px;color:#475569;font-size:13px;font-weight:600;box-shadow:0 1px 3px rgba(15,23,42,.04);}
@@ -222,7 +223,7 @@ def get_excel_signature(path):
 
 
 def format_spanish_date(dt_value):
-    return f"{dt_value.day} de {MESES[dt_value.month]} del {dt_value.year}"
+    return f"{dt_value.day} de {MESES[dt_value.month]} del {dt_value.year} a las {dt_value.strftime('%H:%M')}"
 
 
 def get_excel_last_update_text(path):
@@ -2015,7 +2016,7 @@ with st.sidebar:
         label_visibility="collapsed",
     )
     st.markdown(
-        f'<div class="sidebar-footer"><strong>Ultima actualización</strong>{EXCEL_LAST_UPDATE_TEXT}</div>',
+        f'<div class="sidebar-footer"><strong>Ultima actualización</strong><span class="sidebar-update-date">{EXCEL_LAST_UPDATE_TEXT}</span></div>',
         unsafe_allow_html=True
     )
 
