@@ -5,7 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from pathlib import Path
 from calendar import monthrange
-from datetime import datetime
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from io import BytesIO
 import base64
@@ -226,9 +226,21 @@ def format_spanish_date(dt_value):
 
 
 def get_excel_last_update_text(path):
-    stat = path.stat()
-    updated_at = datetime.fromtimestamp(stat.st_mtime, ZoneInfo("America/Bogota"))
-    return format_spanish_date(updated_at)
+    wb = load_workbook(path, read_only=True)
+    try:
+        updated_at = wb.properties.modified or wb.properties.created
+    finally:
+        wb.close()
+
+    if updated_at is None:
+        stat = path.stat()
+        updated_at = datetime.fromtimestamp(stat.st_mtime, ZoneInfo("America/Bogota"))
+        return format_spanish_date(updated_at)
+
+    if updated_at.tzinfo is None:
+        updated_at = updated_at.replace(tzinfo=timezone.utc)
+
+    return format_spanish_date(updated_at.astimezone(ZoneInfo("America/Bogota")))
 
 
 def read_excel_table(path, table_name):
