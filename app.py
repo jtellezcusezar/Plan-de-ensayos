@@ -953,8 +953,13 @@ def build_report_artifacts(month_num):
           display: table-row-group;
         }}
         .section-pending .rt tr {{
-          break-inside: avoid;
-          page-break-inside: avoid;
+          break-inside: auto;
+          page-break-inside: auto;
+        }}
+        .section-pending .rt td,
+        .section-pending .rt th {{
+          break-inside: auto;
+          page-break-inside: auto;
         }}
         .rt th {{ background:#B5545C; padding:9px 10px; text-align:left; font-size:10px; font-weight:700; color:#FFF7F7; text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid #9F434B; white-space:normal; line-height:1.2; word-break:break-word; }}
         .rt td {{ padding:9px 10px; border-bottom:1px solid #F1D9DB; color:#6B7280; line-height:1.35; word-break:break-word; vertical-align:top; }}
