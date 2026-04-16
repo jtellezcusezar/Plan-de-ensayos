@@ -116,7 +116,7 @@ html,body,[class*="css"]{font-family:'Inter',sans-serif!important;}
 section[data-testid="stSidebar"],[data-testid="stSidebar"]{background:#F8FAFC;border-right:1px solid #E5E9F0;}
 section[data-testid="stSidebar"] > div:first-child,[data-testid="stSidebar"] > div:first-child{padding-top:1.25rem;}
 section[data-testid="stSidebar"] > div:first-child,[data-testid="stSidebar"] > div:first-child{display:flex;flex-direction:column;height:100%;}
-section[data-testid="stSidebar"] [data-testid="stVerticalBlock"],[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{gap:.35rem;}
+section[data-testid="stSidebar"] [data-testid="stVerticalBlock"],[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{display:flex;flex-direction:column;gap:.35rem;height:100%;}
 .sidebar-logo-wrap{display:flex;justify-content:center;align-items:center;width:fit-content;margin:0 auto 14px auto;padding:12px 18px;background:#FF0000;border-radius:18px;}
 .sidebar-logo-img{display:block;width:150px;height:auto;}
 .sidebar-brand{font-size:18px;font-weight:800;color:#111827;line-height:1.2;margin-bottom:4px;text-align:center;}
