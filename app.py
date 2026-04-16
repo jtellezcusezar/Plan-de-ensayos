@@ -2036,7 +2036,7 @@ with st.sidebar:
         label_visibility="collapsed",
     )
     st.markdown(
-        f'<div class="sidebar-footer"><strong>Ultima actualización</strong><span class="sidebar-update-date">{EXCEL_LAST_UPDATE_TEXT}</span></div>',
+        f'<div class="sidebar-footer"><strong>Última actualización</strong><span class="sidebar-update-date">{EXCEL_LAST_UPDATE_TEXT}</span></div>',
         unsafe_allow_html=True
     )
 
