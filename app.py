@@ -699,7 +699,7 @@ def build_report_pending_table_html(df_ensayos, df_ctrl, month_num):
             f'<div class="report-pending-value">{ctrl_row.get("Control zonas comunes", empty_html)}</div>'
             '</section>'
             '<section class="report-pending-item">'
-            '<div class="report-pending-label">Ensayos pendientes</div>'
+            '<div class="report-pending-label">Ensayos pendientes (No realizados y/o no subidos a ACC)</div>'
             f'<div class="report-pending-value">{ens_map.get(proyecto, empty_html)}</div>'
             '</section>'
             '</div>'
