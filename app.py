@@ -2549,7 +2549,7 @@ if current_page == "Ensayos":
     st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Ensayos pendientes ──
-    st.markdown(section_header("Ensayos pendientes", "Ensayos con valor 0 o 0,5 según los filtros aplicados"), unsafe_allow_html=True)
+    st.markdown(section_header("Ensayos pendientes"), unsafe_allow_html=True)
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
     pending_ensayos_df = df1[
         df1["Cantidad_num"].isin([0, 0.5])
@@ -2678,7 +2678,7 @@ if current_page == "Controles":
             tab5_error = str(exc)
 
     title5 = "Controles" if sel5_area == "Sin datos" else control_area_title(sel5_area)
-    st.markdown(section_header(title5, "Promedio mensual con 12 meses fijos. Los registros sin valor no se incluyen en el cálculo."), unsafe_allow_html=True)
+    st.markdown(section_header(title5, "Promedio mensual"), unsafe_allow_html=True)
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
     st.markdown(heatmap_legend(), unsafe_allow_html=True)
 
