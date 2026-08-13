@@ -2726,13 +2726,14 @@ if current_page == "Controles":
     if tab5_error:
         st.warning("No fue posible construir la tabla de pendientes de controles con la estructura actual del Excel.")
     elif pending_rows:
+        empty_cell = '<span style="color:#9CA3AF;">—</span>'
         rows_html = "".join(
             f"<tr>"
             f"<td>{row['Proyecto']}</td>"
-            f"<td style='white-space:normal;line-height:1.45;'>{row['Control de torre']}</td>"
-            f"<td style='white-space:normal;line-height:1.45;'>{row['Producto terminado de torres']}</td>"
-            f"<td style='white-space:normal;line-height:1.45;'>{row['Control zonas comunes']}</td>"
-            f"<td style='white-space:normal;line-height:1.45;'>{row['Control de diseño']}</td>"
+            f"<td style='white-space:normal;line-height:1.45;'>{row.get('Control de torre', empty_cell)}</td>"
+            f"<td style='white-space:normal;line-height:1.45;'>{row.get('Producto terminado de torres', empty_cell)}</td>"
+            f"<td style='white-space:normal;line-height:1.45;'>{row.get('Control zonas comunes', empty_cell)}</td>"
+            f"<td style='white-space:normal;line-height:1.45;'>{row.get('Control de diseño', empty_cell)}</td>"
             f"</tr>"
             for row in pending_rows
         )
