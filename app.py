@@ -699,6 +699,10 @@ def build_report_pending_table_html(df_ensayos, df_ctrl, month_num):
             f'<div class="report-pending-value">{ctrl_row.get("Control zonas comunes", empty_html)}</div>'
             '</section>'
             '<section class="report-pending-item">'
+            '<div class="report-pending-label">Control de diseño</div>'
+            f'<div class="report-pending-value">{ctrl_row.get("Control de diseño", empty_html)}</div>'
+            '</section>'
+            '<section class="report-pending-item">'
             '<div class="report-pending-label">Ensayos pendientes (No realizados y/o no subidos a ACC)</div>'
             f'<div class="report-pending-value">{ens_map.get(proyecto, empty_html)}</div>'
             '</section>'
@@ -1450,6 +1454,7 @@ def build_pending_controls_rows(df_ctrl, proyectos, show_repeat_count=False):
             (proy_df["Etapa"] == "Producto terminado")
         )
         zonas_mask = proy_df["Area"] == "Zonas comunes"
+        diseno_mask = proy_df["Area"] == "Diseño"
 
         def format_controls(subdf):
             controles = (
@@ -1482,6 +1487,7 @@ def build_pending_controls_rows(df_ctrl, proyectos, show_repeat_count=False):
             "Control de torre": format_controls(proy_df[torre_mask]),
             "Producto terminado de torres": format_controls(proy_df[producto_mask]),
             "Control zonas comunes": format_controls(proy_df[zonas_mask]),
+            "Control de diseño": format_controls(proy_df[diseno_mask]),
         })
 
     return [
@@ -1490,6 +1496,7 @@ def build_pending_controls_rows(df_ctrl, proyectos, show_repeat_count=False):
             "Control de torre",
             "Producto terminado de torres",
             "Control zonas comunes",
+            "Control de diseño",
         ])
     ]
 
@@ -2725,6 +2732,7 @@ if current_page == "Controles":
             f"<td style='white-space:normal;line-height:1.45;'>{row['Control de torre']}</td>"
             f"<td style='white-space:normal;line-height:1.45;'>{row['Producto terminado de torres']}</td>"
             f"<td style='white-space:normal;line-height:1.45;'>{row['Control zonas comunes']}</td>"
+            f"<td style='white-space:normal;line-height:1.45;'>{row['Control de diseño']}</td>"
             f"</tr>"
             for row in pending_rows
         )
@@ -2735,6 +2743,7 @@ if current_page == "Controles":
             f'<th>Control de torre</th>'
             f'<th>Producto terminado de torres</th>'
             f'<th>Control zonas comunes</th>'
+            f'<th>Control de diseño</th>'
             f'</tr></thead><tbody>{rows_html}</tbody></table></div>',
             unsafe_allow_html=True
         )
